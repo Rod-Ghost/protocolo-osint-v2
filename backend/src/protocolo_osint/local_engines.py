@@ -44,13 +44,39 @@ class EngineError(ValueError):
 
 
 def inventory() -> list[dict[str, Any]]:
-    return [
-        {"id": engine.id, "project": engine.project, "license": engine.license,
-         "accepts": engine.accepts, "description": engine.description,
-         "installed": shutil.which(engine.executable) is not None,
-         "enabled": os.getenv("OSINT_ENABLE_LOCAL_ENGINES") == "1" and engine.accepts != "service"}
-        for engine in ENGINES
-    ]
+    """Report actual local CLI readiness using the same UI contract as Vercel.
+
+    Local execution never requires an administrator token. Engines remain
+    opt-in and must be installed on the operator's own computer.
+    """
+    opt_in = os.getenv("OSINT_ENABLE_LOCAL_ENGINES") == "1"
+    items = []
+    titles = {"sherlock": "Sherlock", "maigret": "Maigret",
+              "subfinder": "subfinder", "amass": "OWASP Amass",
+              "spiderfoot": "SpiderFoot"}
+    for engine in ENGINES:
+        installed = shutil.which(engine.executable) is not None
+        supported = engine.accepts != "service"
+        runnable = installed and opt_in and supported
+        if not installed:
+            status, reason = "not_installed", "Instale o executável no computador para utilizá-lo."
+        elif not supported:
+            status, reason = "worker_required", "Integração local por serviço ainda não implementada."
+        elif not opt_in:
+            status, reason = "approval_required", "Ative OSINT_ENABLE_LOCAL_ENGINES=1 somente no ambiente local."
+        else:
+            status, reason = "ready", "Disponível neste computador, sem token ou login."
+        items.append({
+            "id": engine.id, "title": titles[engine.id],
+            "project": engine.project, "source": engine.project,
+            "license": engine.license, "accepts": engine.accepts,
+            "input_kind": engine.accepts if supported else "domain",
+            "mode": "local" if supported else "worker",
+            "description": engine.description,
+            "installed": installed, "enabled": opt_in and supported,
+            "runnable": runnable, "status": status, "reason": reason,
+        })
+    return items
 
 
 def _command(engine: Engine, query: str) -> list[str]:

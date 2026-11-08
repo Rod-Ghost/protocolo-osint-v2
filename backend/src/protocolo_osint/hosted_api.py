@@ -22,7 +22,7 @@ from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
@@ -205,6 +205,30 @@ async def get_engine_job(job_id: str, authorization: str | None = Header(default
         raise HTTPException(503, "Armazenamento privado indisponível.") from exc
     import json
     return json.loads(blob.body)
+
+
+
+@app.get("/api/v1/system/readiness")
+async def operational_readiness():
+    """Read-only deployment doctor; no tokens or secret values in responses."""
+    enabled = os.environ.get("OSINT_ENGINE_QUEUE_ENABLED") == "1"
+    credential_ok = len(os.environ.get("OSINT_ENGINE_TOKEN", "")) >= 32
+    blob_detected = bool(
+        os.environ.get("BLOB_READ_WRITE_TOKEN") or
+        os.environ.get("VERCEL_BLOB_READ_WRITE_TOKEN") or
+        os.environ.get("BLOB_STORE_ID")
+    )
+    worker = await engine_queue_capabilities()
+    live = worker.get("workers_health") == "heartbeat-recent"
+    return {
+        "version": VERSION,
+        "queue": {"configured": enabled, "tested": False, "region": "gru1"},
+        "operator_auth": {"configured": credential_ok, "method": "admin-token-temporary"},
+        "private_blob": {"binding_detected": blob_detected, "tested": False},
+        "daemon": {"recent_heartbeat": live, "tested_job": False},
+        "can_submit_jobs": enabled and credential_ok and blob_detected and live,
+        "notice": "Variáveis e heartbeat não comprovam consultas externas operacionais."
+    }
 
 
 @app.get("/api/v1/engines/queue/capabilities")

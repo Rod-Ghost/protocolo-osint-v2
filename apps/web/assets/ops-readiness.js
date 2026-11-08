@@ -1,6 +1,8 @@
 /* Public, read-only infrastructure diagnostics. Credentials are NEVER fetched. */
 (() => {
 'use strict';
+// The Vercel Queue is a hosted administrative resource, never a local requirement.
+if(document.body?.dataset.runtime!=='hosted')return;
 const panel=document.querySelector('#panel-engines');if(!panel)return;
 const box=document.createElement('section');box.className='ops-readiness';
 box.innerHTML='<div class="ops-head"><div><div class="eyebrow">OPERAÇÃO / DIAGNÓSTICO</div><h2>Infraestrutura dos motores</h2><p>Indicadores reais da Vercel. Esta tela não executa consultas nem ativa cobranças.</p></div><button type="button" id="ops-refresh" class="button">Atualizar</button></div><div id="ops-cards" class="ops-cards" aria-live="polite"></div><p id="ops-summary" role="status" aria-live="polite">Consultando...</p>';

@@ -4,6 +4,7 @@ This module is intentionally separate from main.py, the full local application.
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import hmac
 import os
 from pathlib import Path
@@ -18,12 +19,19 @@ from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 from .image_routes import router as image_router
+from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
-app = FastAPI(title="Protocolo OSINT V2 — API pública", version=VERSION, docs_url="/api/docs", openapi_url="/api/openapi.json")
+@asynccontextmanager
+async def app_lifespan(_app):
+    async with remote_mcp.session_manager.run():
+        yield
+
+
+app = FastAPI(title="Protocolo OSINT V2 — API pública", version=VERSION, docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=app_lifespan)
 app.include_router(image_router)
 
 
@@ -154,5 +162,10 @@ def integrations():
         {"name": "Sherlock / Maigret", "status": "experimental", "detail": "Pacotes Python fixados por versão; execução exige autorização e validação real."},
         {"name": "SpiderFoot / subfinder / Amass", "status": "planned", "detail": "Contêiner preparado, mas worker e orquestração ainda não implantados."},
         {"name": "Casos, grafo e evidências", "status": "planned", "detail": "Exigem autenticação e banco por usuário para acesso público"},
-        {"name": "MCP remoto", "status": "experimental", "detail": "Cliente browser HTTPS+CORS, token efêmero; sem proxy no servidor"},
+        {"name": "MCP remoto", "status": "experimental", "detail": "Cliente browser HTTPS+CORS e servidor oficial MCP v2 de leitura, sem casos ou execução de motores"},
+        {"name": "Workers OSINT Vercel", "status": "planned", "detail": "Runtime de cinco motores e fila codificados; deployment Daemon/Private Blob ainda não ativado"},
     ]}
+
+
+# MCP mount must be last: preserve all existing FastAPI paths and only expose read-only tools.
+app.mount("/mcp", mcp_server_app())

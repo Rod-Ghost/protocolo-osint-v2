@@ -123,3 +123,8 @@ Em Motores de pesquisa, o diagnóstico da API apresenta fila, autorização, arm
 ## v1.1 - Auditoria local e relatórios
 
 A tela Casos agora oferece relatório Markdown feito no navegador a partir do cofre desbloqueado, sem enviar os registros à API. O arquivo exportado não é criptografado. No backend LOCAL, novos casos e evidências recebem eventos encadeados SHA-256 e podem ser auditados pela rota /api/v1/cases/{id}/custody. Relatórios em PDF e DOCX são gerados em memória mediante instalação opcional das dependências [reports]. Casos anteriores preservados são classificados legacy_unsealed. A API Vercel continua sem armazenamento de casos. Detalhes em docs/CUSTODY_AND_REPORTS_V11.md.
+
+
+## v1.2 — IA opcional, sem assinatura obrigatória
+
+O novo menu **IA opcional** oferece um roteiro metodológico **100% offline (sem IA)** como padrão. Quem desejar pode conectar Ollama local (servidor e modelo fornecidos pelo operador) ou uma API HTTPS compatível com Chat Completions com a própria chave, digitada apenas na sessão e enviada diretamente pelo navegador ao provedor escolhido, após confirmação. A chave não é salva nem passa pelo backend Vercel. Integração experimental: provedores podem bloquear CORS e gerar cobranças próprias; a ferramenta não executa comandos sugeridos pela IA. Veja `docs/AI_LOCAL_BYOK_V12.md`.

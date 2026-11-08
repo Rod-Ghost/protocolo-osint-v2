@@ -36,3 +36,7 @@ O sistema **não é** multiusuário, não garante cadeia de custódia judicial e
 ## Complemento v1.1
 
 backend/src/protocolo_osint/custody.py mantém diário de metadados por caso em SQLite sem alterar o esquema original. case_reports.py cria relatórios PDF/DOCX/Markdown em memória usando extras opcionais. main.py limita rotas de casos ao loopback. hosted_api.py continua sem SQLite. A interface gera relatórios Markdown diretamente do cofre AES-GCM já existente, sem enviar os dados. Criptografia de banco, ancoragem externa e autenticação por operador permanecem pendentes.
+
+## v1.2 — Assistente opcional e BYOK
+
+Camada do navegador `ai-bridge.js` + `ai-workspace.js` com checklist determinístico offline, sem chaves ou backend. O adaptador opcional usa `fetch` CORS diretamente para Ollama loopback ou API HTTPS compatível, com segredo em memória somente até a operação; a API Vercel não recebe chaves nem conteúdo do cofre. O CSP inclui loopback da porta 11434 sem ampliar HTTP genérico. Nenhum modelo é instalado no servidor. Veja `docs/AI_LOCAL_BYOK_V12.md`.

@@ -53,6 +53,7 @@ def osint_list_sources(query: str = "") -> dict:
 def configured_hosts() -> list[str]:
     """Explicit production hosts and this deployment's auto-generated Vercel host."""
     hosts = ["localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*",
+             "testserver", "testserver:*",
              "protocolo-osint-v2-nine.vercel.app", "protocolo-osint-v2.vercel.app"]
     for raw in (os.getenv("VERCEL_URL", ""), os.getenv("MCP_PUBLIC_HOST", "")):
         value = raw.strip().lower()

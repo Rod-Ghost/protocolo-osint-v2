@@ -22,6 +22,10 @@ from .engine_hub import EngineError, execute as execute_engine, inventory as eng
 from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE, HEARTBEAT_FRESHNESS_SECONDS
+from .operator_auth import (
+    status as operator_status, login as operator_login, callback as operator_callback,
+    logout as operator_logout, require_operator
+)
 
 VERSION = "1.2.0"
 ROOT = Path(__file__).resolve().parents[3]
@@ -297,6 +301,106 @@ def integrations():
         {"name": "MCP remoto", "status": "experimental", "detail": "Cliente browser HTTPS+CORS e servidor oficial MCP v2 de leitura, sem casos ou execução de motores"},
         {"name": "Workers OSINT Vercel", "status": "planned", "detail": "Runtime de cinco motores e fila codificados; deployment Daemon/Private Blob ainda não ativado"},
     ]}
+
+
+
+# Optional GitHub login for the Vercel-only operator. The public catalog, local
+# encrypted browser vault, image analysis, and MCP read-only tools stay open.
+@app.get("/api/v1/auth/status")
+def github_operator_status(request: Request):
+    return operator_status(request)
+
+
+@app.get("/api/v1/auth/github/start", include_in_schema=False)
+def github_operator_start(request: Request):
+    return operator_login(request)
+
+
+@app.get("/api/v1/auth/github/callback", include_in_schema=False)
+async def github_operator_callback(request: Request, code: str, state: str):
+    return await operator_callback(request, code=code, state=state)
+
+
+@app.post("/api/v1/auth/logout")
+def github_operator_logout(request: Request):
+    return operator_logout(request)
+
+
+class OperatorSearchRequest(BaseModel):
+    value: str = Field(min_length=2, max_length=253)
+    engine: Literal["auto", "sherlock", "maigret", "subfinder", "amass", "spiderfoot"] = "auto"
+    include_spiderfoot: bool = True
+
+
+def _search_motors(value: str, engine: str, include_spiderfoot: bool) -> tuple[str, list[str]]:
+    """A plain username/domain selects only compatible passive CLI adapters."""
+    from .engine_queue import validate_job
+    kind = detect_type(value)
+    if engine == "auto":
+        if kind == "username_candidate":
+            chosen = ["sherlock", "maigret"]
+        elif kind == "domain":
+            chosen = ["subfinder", "amass"] + (["spiderfoot"] if include_spiderfoot else [])
+        else:
+            raise HTTPException(422, "A pesquisa automática aceita um username ou domínio público; imagens usam o laboratório visual.")
+    else:
+        chosen = [engine]
+    for item in chosen:
+        try:
+            validate_job(item, value)
+        except EngineError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    return kind, chosen
+
+
+@app.post("/api/v1/operator/search", status_code=202)
+async def operator_search(request: Request, payload: OperatorSearchRequest):
+    """Authenticated workflow: one explicit request, at most three bounded jobs."""
+    operator = require_operator(request, csrf=True)
+    if os.getenv("OSINT_ENGINE_QUEUE_ENABLED") != "1":
+        raise HTTPException(503, "Fila de motores hospedados indisponível.")
+    kind, motors = _search_motors(payload.value, payload.engine, payload.include_spiderfoot)
+    jobs, errors = [], []
+    for motor in motors:
+        try:
+            job = await queue_submit(motor, payload.value, authenticated=True,
+                                     operator_id=operator["uid"])
+            jobs.append({"engine": motor, "job_id": job["job_id"], "status": job["status"]})
+        except Exception:
+            errors.append({"engine": motor, "error": "Não foi possível enfileirar este motor."})
+    if not jobs:
+        raise HTTPException(503, "Nenhuma tarefa foi aceita pela fila privada.")
+    return {
+        "kind": kind, "value": payload.value.strip(), "jobs": jobs,
+        "errors": errors, "records_verified": False,
+        "notice": "Tarefas submetidas ao Daemon. Resultados requerem consulta e validação de fontes; não há confirmação de identidade."
+    }
+
+
+@app.get("/api/v1/operator/jobs/{job_id}")
+async def operator_job_result(request: Request, job_id: str):
+    """Never reveal a stored result belonging to another GitHub operator."""
+    operator = require_operator(request)
+    if not JOB_UUID_RE.fullmatch(job_id):
+        raise HTTPException(422, "ID de tarefa inválido.")
+    if os.getenv("OSINT_ENGINE_QUEUE_ENABLED") != "1":
+        raise HTTPException(503, "Fila indisponível.")
+    try:
+        from vercel.blob import BlobNotFoundError, get_blob
+        try:
+            item = await get_blob(f"osint-jobs/{job_id}/result.json", access="private")
+        except BlobNotFoundError:
+            return {"job_id": job_id, "status": "pending", "records": []}
+        import json
+        result = json.loads(item.body)
+    except Exception as exc:
+        raise HTTPException(503, "Resultado privado indisponível.") from exc
+    if not isinstance(result, dict) or result.get("job_id") != job_id:
+        raise HTTPException(503, "Registro de resultado inconsistente.")
+    # Legacy jobs without operator_id are deliberately inaccessible to OAuth.
+    if result.get("operator_id") != operator["uid"]:
+        raise HTTPException(404, "Tarefa não encontrada.")
+    return result
 
 
 # MCP mount must be last: preserve all existing FastAPI paths and only expose read-only tools.

@@ -148,8 +148,8 @@ def test_hosted_auto_username_no_longer_routes_to_domain(monkeypatch):
     assert resp.status_code == 202, resp.text
     assert resp.json()["kind"] == "username"
     assert [x["engine"] for x in resp.json()["jobs"]] == [
-            "sherlock", "maigret", "spiderfoot"
-        ]
+        "sherlock", "maigret", "spiderfoot"
+    ]
     assert all(target == "rod.roldan" for _, target, _ in calls)
     assert calls[-1][2]["target_kind"] == "username"
 

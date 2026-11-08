@@ -39,6 +39,7 @@ def _text(value):
 
 def _date(value):
     try:
+        if not isinstance(value,str): return None
         dt=datetime.fromisoformat(value.replace("Z","+00:00"))
         if dt.tzinfo is None: return dt.date().isoformat()
         return dt.astimezone(timezone.utc).isoformat()
@@ -70,8 +71,11 @@ def source_quality(sources):
     for i,item in enumerate(_bounded(sources)):
         if not isinstance(item,dict): raise ValueError("Fonte inválida.")
         url=str(item.get("url",""))[:1000]
-        parsed=urlsplit(url)
-        https=parsed.scheme=="https" and bool(parsed.hostname)
+        try:
+            parsed=urlsplit(url)
+            https=parsed.scheme=="https" and bool(parsed.hostname)
+        except ValueError:
+            https=False
         observed=_date(item.get("observed_at","")) is not None
         primary=item.get("primary") is True
         independently_confirmed=item.get("independently_confirmed") is True
@@ -154,7 +158,11 @@ def url_inspect(url):
     try: p=urlsplit(url)
     except ValueError: raise ValueError("URL inválida.")
     if p.scheme not in ("http","https") or not p.hostname: raise ValueError("Somente URLs HTTP(S) válidas.")
-    if p.username or p.password: raise ValueError("Credenciais embutidas em URL são proibidas.")
+    try:
+        if p.username or p.password: raise ValueError("Credenciais embutidas em URL são proibidas.")
+        port=p.port
+    except ValueError as exc:
+        raise ValueError("Porta inválida ou credenciais embutidas.") from exc
     try: ip=ip_address(p.hostname); is_ip=True; private=not ip.is_global
     except ValueError: is_ip=False;private=False
     flags=[]
@@ -162,8 +170,8 @@ def url_inspect(url):
     if is_ip:flags.append("ip_literal")
     if private:flags.append("ip_nao_publico")
     if "xn--" in p.hostname:flags.append("punycode")
-    if p.port and p.port not in (80,443):flags.append("porta_incomum")
-    return {"hostname":p.hostname.lower(),"scheme":p.scheme,"port":p.port,
+    if port and port not in (80,443):flags.append("porta_incomum")
+    return {"hostname":p.hostname.lower(),"scheme":p.scheme,"port":port,
             "flags":flags,"query_present":bool(p.query),
             "warning":"Inspeção sintática apenas; URL não acessada nem reputação verificada.",
             "external_requests":0}

@@ -23,7 +23,7 @@ from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE
 
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
@@ -56,7 +56,7 @@ async def security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; "
+        "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; connect-src 'self' https: http://127.0.0.1:11434 http://localhost:11434; worker-src 'self' blob:; object-src 'none'; "
         "base-uri 'self'; frame-ancestors 'none'"
     )
     if request.url.path.startswith("/api/"):

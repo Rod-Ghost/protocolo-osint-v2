@@ -1,6 +1,8 @@
 /* Protocolo OSINT · Admin-only job interface. No credentials are stored. */
 (()=>{
 'use strict';
+// The Vercel Queue is a hosted administrative resource, never a local requirement.
+if(document.body?.dataset.runtime!=='hosted')return;
 const panel=document.querySelector('#panel-engines');
 if(!panel)return;
 const card=document.createElement('section');card.className='engine-queue-card';card.setAttribute('aria-label','Fila de motores OSINT');

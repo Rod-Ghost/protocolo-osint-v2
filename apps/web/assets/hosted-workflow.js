@@ -16,6 +16,11 @@
   if (terminal) { terminal.hidden = true; terminal.style.display = "none"; }
   const originalProgress = $("#engine-progress", panel);
   if (originalProgress) originalProgress.hidden = true;
+  // The hosted UI uses one guided search instead of displaying two consoles.
+  for(const selector of [".engine-catalog",".engine-legend"]){
+    const node=$(selector,panel);
+    if(node){ node.hidden=true; node.style.display="none"; }
+  }
 
   const wrapper = document.createElement("section");
   wrapper.className = "hosted-workflow";

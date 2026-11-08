@@ -1,0 +1,42 @@
+# Protocolo OSINT V2 — opt-in Vercel daemon image, NOT an HTTP service.
+# All upstream projects retain their copyright/license. Sources installed by
+# pinned official release versions at image build, not pasted into V2 codebase.
+FROM golang:1.26-bookworm AS go-engines
+ENV CGO_ENABLED=0 GOBIN=/opt/bin
+RUN mkdir -p /opt/bin && \
+    go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.9.0 && \
+    go install github.com/owasp-amass/amass/v5/cmd/amass@v5.0.1
+
+FROM python:3.11-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/workspace/backend/src HOME=/tmp \
+    OSINT_WORKER_AUTHORIZED=0 VERCEL_REGION=gru1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git libxml2 libxslt1.1 libjpeg62-turbo && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+COPY requirements.txt /workspace/requirements.txt
+RUN python -m pip install --no-cache-dir -r /workspace/requirements.txt \
+    'vercel-queue==0.10.0' 'vercel-blob==0.5.1'
+RUN git clone --depth 1 --branch v4.0 https://github.com/smicallef/spiderfoot.git /opt/spiderfoot && \
+    test "$(git -C /opt/spiderfoot rev-parse HEAD)" = "b9c345de5b085debc7444fc10e0e26e7745df5f2" && \
+    cp /opt/spiderfoot/LICENSE /opt/spiderfoot/LICENSE-UPSTREAM.txt && \
+    cp /opt/spiderfoot/requirements.txt /opt/spiderfoot/requirements-upstream.txt && \
+    sed -i -e 's/pyyaml>=5.4.1,<6/pyyaml>=6.0.2,<7/' \
+           -e 's/cryptography>=3.4.8,<4/cryptography>=41,<46/' \
+           -e 's/pyOpenSSL>=21.0.0,<22/pyOpenSSL>=24,<26/' \
+           -e 's/networkx>=2.6.3,<2.7/networkx>=2.8,<3.3/' \
+           -e 's/lxml>=4.6.3,<5/lxml>=6.0.2,<7/' \
+           /opt/spiderfoot/requirements.txt && \
+    python -m pip install --no-cache-dir -r /opt/spiderfoot/requirements.txt
+RUN printf '#!/bin/sh\nexec python /opt/spiderfoot/sf.py "$@"\n' > /usr/local/bin/spiderfoot && \
+    chmod 755 /usr/local/bin/spiderfoot
+COPY --from=go-engines /opt/bin/subfinder /usr/local/bin/subfinder
+COPY --from=go-engines /opt/bin/amass /usr/local/bin/amass
+COPY backend /workspace/backend
+COPY THIRD_PARTY_NOTICES.md /workspace/THIRD_PARTY_NOTICES.md
+RUN command -v sherlock && command -v maigret && command -v subfinder && \
+    command -v amass && command -v spiderfoot && \
+    python -m py_compile /workspace/backend/src/protocolo_osint/engine_queue.py
+# Only pulls authenticated queue messages. Does NOT listen on an HTTP port.
+CMD ["python", "-m", "protocolo_osint.engine_queue"]

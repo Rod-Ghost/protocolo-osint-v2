@@ -4,6 +4,7 @@
 const MAX_BODY=1000000;
 const presets=Object.freeze([
  {id:'custom',label:'Personalizado',url:''},
+ {id:'protocolo',label:'Protocolo OSINT — MCP de leitura',url:'https://protocolo-osint-v2-nine.vercel.app/mcp/'},
  {id:'cloudflare',label:'Cloudflare MCP (endereço fornecido pelo operador)',url:''},
  {id:'github',label:'GitHub MCP (endereço fornecido pelo operador)',url:''},
  {id:'search',label:'Pesquisa MCP (endereço fornecido pelo operador)',url:''}

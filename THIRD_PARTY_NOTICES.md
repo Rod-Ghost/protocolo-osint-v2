@@ -43,3 +43,10 @@ O contêiner de referência `deploy/engines/Dockerfile` descreve a instalação 
 - **Google Cloud Vision** — serviço externo licenciado, sujeito aos termos e cobrança do Google; integrações usam a API oficial de Web Detection, não código copiado ou scraping.
 
 Não se atribui autoria de dependências externas ao Protocolo OSINT. Os avisos legados e a auditoria de procedência continuam pendentes.
+
+
+## v0.8 — SDKs e Daemon
+
+- `mcp==2.3.0`, SDK oficial da Model Context Protocol (MIT), https://github.com/modelcontextprotocol/python-sdk.
+- `vercel-queue==0.10.0` e `vercel-blob==0.5.1`, SDKs Vercel publicados separadamente, sujeitos aos respectivos avisos/licenças e termos de plataforma.
+- O contêiner `deploy/engines/Dockerfile.daemon` obtém versões oficiais fixadas de Sherlock, Maigret, subfinder, Amass e SpiderFoot no build, sem apagar autores. Compilações e caches externos não são autoria original do Protocolo OSINT. Gerar SBOM/avisos completos antes de distribuir imagens.

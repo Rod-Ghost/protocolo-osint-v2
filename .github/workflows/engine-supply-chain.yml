@@ -1,0 +1,32 @@
+name: Engine image build and upstream smoke checks
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'deploy/engines/**'
+      - 'backend/src/protocolo_osint/engine_worker_runtime.py'
+      - 'backend/src/protocolo_osint/engine_queue.py'
+      - '.github/workflows/engine-supply-chain.yml'
+permissions:
+  contents: read
+jobs:
+  engine-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated image from pinned upstream releases
+        run: docker build --file deploy/engines/Dockerfile.daemon --tag protocolo-osint-engines:ci .
+      - name: Probe all five installed executables (no scanning)
+        run: |
+          docker run --rm --entrypoint sh protocolo-osint-engines:ci -c '
+            set -eu
+            for tool in sherlock maigret subfinder amass spiderfoot; do
+              command -v "$tool" >/dev/null
+            done
+            sherlock --version >/dev/null 2>&1 || sherlock --help >/dev/null 2>&1
+            maigret --version >/dev/null 2>&1 || maigret --help >/dev/null 2>&1
+            subfinder -version >/dev/null 2>&1
+            amass -version >/dev/null 2>&1 || amass -h >/dev/null 2>&1
+            spiderfoot -h >/dev/null 2>&1
+          '

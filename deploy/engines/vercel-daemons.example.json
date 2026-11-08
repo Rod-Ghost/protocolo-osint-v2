@@ -1,0 +1,10 @@
+{
+  "daemons": {
+    "osintEngines": {
+      "root": ".",
+      "entrypoint": "deploy/engines/Dockerfile.daemon",
+      "command": ["python", "-m", "protocolo_osint.engine_queue"],
+      "instances": {"gru1": 1}
+    }
+  }
+}

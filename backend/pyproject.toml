@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "protocolo-osint-v2"
-version = "0.6.0"
+version = "0.8.0"
 description = "Backend foundation for Protocolo OSINT V2"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,6 +14,7 @@ dependencies = [
     "uvicorn>=0.30,<1",
     "pillow>=10,<13",
     "python-multipart>=0.0.9,<1",
+    "mcp==2.3.0",
 ]
 
 [project.optional-dependencies]

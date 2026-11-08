@@ -101,3 +101,10 @@ A implantação pública não expõe o banco SQLite, caso privado nem tokens. O 
 ## V0.7 MCP customizado (experimental)
 
 A aba Integrações & MCP aceita URL HTTPS, token Bearer opcional, handshake, listagem de ferramentas e chamada com JSON e confirmação. A comunicação é direta do navegador para o servidor escolhido, sem proxy e sem guardar tokens. Presets GitHub/Cloudflare/Pesquisa são modelos de conexão SEM URL/credenciais prontas. CORS do servidor MCP é obrigatório. Stdio, OAuth, SSE contínuo e conexão a qualquer MCP não são garantidos. Não inserir credenciais administrativas em servidores desconhecidos. Ver docs/MCP_CUSTOM_V07.md.
+
+
+## v0.8 — MCP v2 oficial e workers OSINT isolados
+
+A API agora pode servir **MCP Streamable HTTP de leitura** no caminho `/mcp/` (SDK oficial `mcp==2.3.0`), com `osint_classify`, `osint_plan_sources` e `osint_list_sources`. Nunca expõe casos, tokens nem comandos remotos. O servidor é independente do cliente MCP customizado já existente. O transporte 2026-07-28 e a compatibilidade legada são gerenciados pelo SDK, mas a conexão live de clientes de terceiros depende dos testes de hospedagem.
+
+Os cinco motores são empacotáveis em um **único container worker**: Sherlock, Maigret, subfinder, OWASP Amass e SpiderFoot. Arquivos: `engine_worker_runtime.py`, `engine_queue.py`, `deploy/engines/Dockerfile.daemon`. Execução em `Vercel Daemons` com fila Vercel Queues e resultados Private Blob é caminho suportado pela arquitetura, mas está **desativado por padrão**, sem criação de instância contínua nem cobrança iniciada. O arquivo `vercel-daemons.example.json` é referência de implantação, não configuração ativa. Um usuário terá de se autenticar para solicitar cada trabalho. Testes de subprocessos e filas usam simulação; build Docker/execução real são verificados na workflow separada de supply chain.

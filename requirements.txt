@@ -3,3 +3,7 @@ httpx==0.28.1
 # Third-party open-source CLI distributions; licenses retained.
 sherlock-project==0.16.2
 maigret==0.6.6
+# Official MCP SDK v2 and Vercel managed Queue/Private Blob clients
+mcp==2.3.0
+vercel-queue==0.10.0
+vercel-blob==0.5.1

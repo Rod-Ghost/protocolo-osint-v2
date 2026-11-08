@@ -37,3 +37,8 @@ Casos e hashes da versão online são persistidos exclusivamente no cofre AES-GC
 - **Cofre indisponível**: exigir HTTPS, Web Crypto e armazenamento local permitido pelo navegador.
 
 Nunca habilitar o backend local single-user em produção para "resolver" um erro de 404. Não adicionar chaves privadas ao frontend ou ao GitHub. Não publicar imagens, evidências, tokens ou dados investigativos nos logs.
+
+
+## Imagens e OCR — V0.6
+
+O frontend pode executar comparação local de hashes e iniciar OCR via WebAssembly sem instalar Python no dispositivo do usuário. O OCR usa CDN de terceiros para carregar runtime e idiomas, com controle de CSP explícito. `GET /api/v1/images/reverse/config` expõe apenas o **estado** do provedor (nunca credenciais); `POST /api/v1/images/reverse` exige `OSINT_REVERSE_ENABLED=1`, `GOOGLE_CLOUD_VISION_API_KEY` e `OSINT_REVERSE_TOKEN` (32+ caracteres) no backend. A foto só sai do navegador após consentimento e chave administrativa. Limite de 2 MB e timeout de fornecedor. **Não ativar essa rota para visitantes anônimos sem autenticação, quota, WAF e controle de gastos.** Documentação: `docs/IMAGE_INTELLIGENCE_V06.md`.

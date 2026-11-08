@@ -3,16 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#08090c" />
+  <meta name="theme-color" content="#090a0c" />
   <meta name="description" content="Protocolo OSINT V2 — estação de pesquisa, análise local e documentação de evidências." />
   <title>Protocolo OSINT V2 · Intelligence Workspace</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23151515'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23FF334D' stroke-width='3'/%3E%3Cpath d='M21 41V22h12c10 0 10 13 0 13H21' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="assets/app.css" />
   <link rel="stylesheet" href="assets/aurum.css" />
   <link rel="stylesheet" href="assets/obsidian.css" />
+  <link rel="stylesheet" href="assets/monochrome.css" />
   <script defer src="assets/vault.js"></script>
   <script defer src="assets/app.js"></script>
   <script defer src="assets/engine-ui.js"></script>
+  <script defer src="assets/image-core.js"></script>
+  <script defer src="assets/media-ui.js"></script>
 </head>
 <body data-runtime="hosted">
   <div class="app-shell">
@@ -39,7 +42,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="safe-card"><span class="safe-card-icon" data-icon="shield"></span><div><strong>Ambiente privado</strong><small>Consultas preparadas localmente. Dados sob seu controle.</small></div></div>
-        <div class="sidebar-footer"><span>COMMUNITY FOUNDATION</span><b>v0.5.0</b></div>
+        <div class="sidebar-footer"><span>COMMUNITY FOUNDATION</span><b>v0.6.0</b></div>
       </div>
     </aside>
 
@@ -111,7 +114,7 @@
           <div id="integration-list" class="integration-grid"></div>
           <div class="mcp-card"><div><div class="eyebrow">MODEL CONTEXT PROTOCOL</div><h2>Integre seu workspace a outros agentes.</h2><p>O adaptador MCP via stdio expõe classificação de termos e catálogo de fontes, sem rede, escrita ou execução de comandos. Integração experimental: validação com diferentes clientes ainda pendente.</p></div><div class="code-display"><code>python -m protocolo_osint.mcp_stdio</code><button id="copy-mcp" type="button" title="Copiar comando" aria-label="Copiar comando"><span data-icon="copy"></span></button></div></div>
         </section>
-        <footer class="global-footer"><div>© Protocolo OSINT V2 · Pesquisa aberta com método</div><div>Resultados de buscas externas não verificados <span class="footer-bullet">•</span> v0.5.0</div></footer>
+        <footer class="global-footer"><div>© Protocolo OSINT V2 · Pesquisa aberta com método</div><div>Resultados de buscas externas não verificados <span class="footer-bullet">•</span> v0.6.0</div></footer>
       </div>
     </main>
   </div>

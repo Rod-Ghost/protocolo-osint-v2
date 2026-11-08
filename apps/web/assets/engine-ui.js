@@ -148,6 +148,51 @@
     describe();
   });
   q('#engine-choice').addEventListener('change',event=>{state.selected=event.target.value;describe()});
+  async function localJobRequest(path,options={}){
+    const ctrl=new AbortController();
+    const timeout=setTimeout(()=>ctrl.abort(),12000);
+    try{
+      const response=await fetch(path,{...options,signal:ctrl.signal,cache:'no-store',credentials:'same-origin'});
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(String(payload.detail||'HTTP '+response.status).slice(0,250));
+      return payload;
+    }finally{clearTimeout(timeout);}
+  }
+  async function runLocalJob(engine,value){
+    const created=await localJobRequest('/api/v1/local-engines/jobs',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({engine:engine.id,value})
+    });
+    if(!/^[a-f0-9]{32}$/.test(created.job_id))throw Error('ID de tarefa local inválido.');
+    const jobId=created.job_id;
+    terminal.textContent='[local] '+engine.title+' · tarefa '+jobId+'\n[queue] '+created.status+'\nNenhuma chave administrativa enviada.';
+    let previous='';
+    // Real statuses from local service; longest worker timeout is 220 seconds.
+    for(let i=0;i<600;i++){
+      await new Promise(resolve=>setTimeout(resolve,1500));
+      const job=await localJobRequest('/api/v1/local-engines/jobs/'+jobId);
+      if(job.status==='queued'||job.status==='running'){
+        if(job.status!==previous){
+          terminal.textContent='[local] '+engine.title+'\n[estado] '+job.status+'\n[tarefa] '+jobId+'\nAguardando resultado da execução no computador.';
+          previous=job.status;
+        }
+        continue;
+      }
+      const result=job.result||{};
+      const records=Array.isArray(result.records)?result.records.slice(0,120):[];
+      const excerpt=String(result.stdout_excerpt||'').slice(0,20000);
+      const output=records.length?records.join('\n'):excerpt;
+      const diagnostic=job.error||result.stderr_excerpt||'';
+      terminal.textContent='['+job.status+'] '+engine.title+'\n[tarefa] '+jobId+
+        '\n[registros] '+records.length+'\n[finalizado] '+(job.finished_at||'não informado')+
+        '\n---\n'+(output||'(motor sem resultados confirmados)')+
+        (diagnostic?'\n[diagnóstico] '+String(diagnostic).slice(0,1800):'')+
+        '\n---\n'+(result.warning||'Resultados externos podem conter falsos positivos.');
+      return;
+    }
+    throw Error('O acompanhamento expirou. O processo local pode continuar; não reenvie a tarefa automaticamente.');
+  }
+
   q('#engine-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const engine=state.engines.find(x=>x.id===state.selected);
@@ -156,11 +201,15 @@
     const token=q('#engine-token').value;
     if(!state.local&&!token){terminal.textContent='[auth] Chave administrativa necessária somente na implantação hospedada.';return;}
     if(!value){terminal.textContent='[input] Informe um alvo válido.';return;}
+    if(state.local&&!window.confirm('Executar '+engine.title+' para '+value+' no seu computador? Os módulos podem consultar fontes públicas externas.'))return;
     state.loading=true;consoleButton.disabled=true;
     q('#engine-progress').classList.add('is-active');
     terminal.textContent=`[${state.local?'local':'hosted'}] Verificando ${engine.title}…\n[scope] 1 alvo, prazo limitado\n[security] ${state.local?'execução no dispositivo sem token':'autenticação para operação hospedada'}`; // no fake progress
     const started=Date.now();
     try{
+      if(state.local){
+        await runLocalJob(engine,value);
+      }else{
       const ctrl=new AbortController();
       const timeout=setTimeout(()=>ctrl.abort(),state.local?50000:30000);
       let response;
@@ -175,6 +224,7 @@
        const count=records?records.length:output.split('\n').filter(Boolean).length;
        const stderr=state.local&&payload.stderr?'\n[stderr] '+String(payload.stderr).slice(0,1200):'';
        terminal.textContent=`[${status}] ${engine.title} • ${duration}s\n[registros/linhas] ${count}\n---\n${output || '(nenhum registro confirmado pela saída do motor)'}${stderr}\n---\n${payload.notice||payload.warning||'Resultados exigem validação independente.'}`;
+      }
     }catch(error){terminal.textContent=`[erro] ${error.name==='AbortError'?'Consulta excedeu o tempo limite.':error.message}\nNenhum resultado foi fabricado.`}
     finally{state.loading=false;q('#engine-progress').classList.remove('is-active');q('#engine-token').value='';describe()}
   });

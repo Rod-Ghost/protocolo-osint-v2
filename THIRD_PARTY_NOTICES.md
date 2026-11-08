@@ -50,3 +50,13 @@ Não se atribui autoria de dependências externas ao Protocolo OSINT. Os avisos 
 - `mcp==2.3.0`, SDK oficial da Model Context Protocol (MIT), https://github.com/modelcontextprotocol/python-sdk.
 - `vercel-queue==0.10.0` e `vercel-blob==0.5.1`, SDKs Vercel publicados separadamente, sujeitos aos respectivos avisos/licenças e termos de plataforma.
 - O contêiner `deploy/engines/Dockerfile.daemon` obtém versões oficiais fixadas de Sherlock, Maigret, subfinder, Amass e SpiderFoot no build, sem apagar autores. Compilações e caches externos não são autoria original do Protocolo OSINT. Gerar SBOM/avisos completos antes de distribuir imagens.
+
+
+## Auditoria dos ZIPs de upstream — 2026-11-08
+
+O mantenedor forneceu os arquivos Sherlock, Maigret, subfinder, Amass e
+SpiderFoot em ZIP. Seus READMEs e manifestos foram inspecionados sem
+incorporar nem republicar os diretórios completos. Os avisos de direitos
+autorais e licenças de cada pacote instalado no contêiner permanecem
+obrigatórios. Detalhes, diferenças entre branches e releases fixados e
+hashes SHA-256 em `docs/UPSTREAM_AUDIT_V13.md`.

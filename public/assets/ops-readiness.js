@@ -23,7 +23,7 @@ async function refresh(){
    tile('Fila de tarefas',d.queue?.configured,'Região '+String(d.queue?.region||'não informada')),
    tile('Autorização',d.operator_auth?.configured,'Credencial de servidor não exibida'),
    tile('Armazenamento privado',d.private_blob?.binding_detected,'Vínculo detectado; operações não testadas'),
-   tile('Worker isolado',d.daemon?.recent_heartbeat,'Presença recente; consulta externa não testada')
+   tile('Worker isolado',d.daemon?.recent_heartbeat,'Heartbeat em até 50 min; consultas externas não testadas')
   );
   summary.textContent=d.can_submit_jobs?'Pré-requisitos detectados. Ainda falta testar uma tarefa real autorizada.':'Execução de motores indisponível até os recursos estarem conectados e seguros.';
  }catch(err){cards.replaceChildren();summary.textContent='Diagnóstico indisponível: '+err.message;}

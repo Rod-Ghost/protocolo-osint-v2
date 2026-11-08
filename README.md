@@ -128,3 +128,16 @@ A tela Casos agora oferece relatório Markdown feito no navegador a partir do co
 ## v1.2 — IA opcional, sem assinatura obrigatória
 
 O novo menu **IA opcional** oferece um roteiro metodológico **100% offline (sem IA)** como padrão. Quem desejar pode conectar Ollama local (servidor e modelo fornecidos pelo operador) ou uma API HTTPS compatível com Chat Completions com a própria chave, digitada apenas na sessão e enviada diretamente pelo navegador ao provedor escolhido, após confirmação. A chave não é salva nem passa pelo backend Vercel. Integração experimental: provedores podem bloquear CORS e gerar cobranças próprias; a ferramenta não executa comandos sugeridos pela IA. Veja `docs/AI_LOCAL_BYOK_V12.md`.
+
+
+
+## v1.3 — Auditoria de fontes oficiais e orçamento do worker (2026-11-08)
+
+Os cinco ZIPs de upstream enviados pelo mantenedor foram verificados em
+`docs/UPSTREAM_AUDIT_V13.md`, com SHA-256 e leitura de READMEs,
+dependências, licenças e CLI. São **fontes de auditoria**, não dependências
+vendorizadas: a imagem de worker continua instalando os releases oficiais
+fixados para reduzir duplicação e preservar rastreabilidade. Foram adicionadas
+salvaguardas de reentrega e uma cadência de heartbeat/poll compatível com
+os limites Hobby. **Até validação de daemon, autenticação e uma consulta
+autorizada, os motores não devem ser apresentados como operacionais ao vivo.**

@@ -59,6 +59,7 @@
         'Incluir SpiderFoot nas pesquisas automáticas compatíveis (pode demorar vários minutos)</label>' +
       '<button id="workflow-submit" type="submit" class="button primary-button">Iniciar pesquisa autorizada</button>' +
     '</form>' +
+    '<button id="workflow-image" class="button" type="button">Pesquisar por imagem (OCR e busca reversa disponível)</button>' +
     '<div id="workflow-status" role="status" aria-live="polite"></div>' +
     '<div id="workflow-results" class="hosted-workflow-results" aria-live="polite"></div>';
   const aside = $(".engine-console", panel);
@@ -99,8 +100,13 @@
     if(engineSelect.selectedOptions[0]?.disabled)engineSelect.value="auto";
     const checkbox=$("#workflow-spiderfoot",wrapper);
     checkbox.disabled=kind!=="auto"&&(!["username","domain","url"].includes(kind));
+    checkbox.closest("label").hidden=checkbox.disabled;
   }
   kindSelect.addEventListener("change",updateKind);
+  $("#workflow-image",wrapper).addEventListener("click",()=>{
+    const nav=document.querySelector('#primary-nav [data-view="images"]');
+    if(nav)nav.click();
+  });
   updateKind();
 
   async function request(path, options={}) {

@@ -11,6 +11,8 @@
 | OCR totalmente offline | Não | N/A | Futuro: distribuir `tesseract.js-core` e `tessdata` localmente com checksum e licença |
 | Busca reversa em todo o Google sem API | Não | N/A | Não anunciada: não há índice público equivalente incorporado ao projeto |
 
+O OCR também pode ser registrado como nota no cofre AES-GCM do caso escolhido. Se o provedor web não estiver configurado, a interface oferece links manuais para Google Lens e TinEye, sem upload automático da foto.
+
 ## Pesquisa de componentes livres
 
 - **Tesseract.js** — https://github.com/naptha/tesseract.js , Apache 2.0; funciona no navegador via WebAssembly. Dependência carregada sob demanda em vez de incorporar código de terceiros manualmente. Modelo de idioma pode demandar download de vários MB. Padrão OCR `por+eng`.

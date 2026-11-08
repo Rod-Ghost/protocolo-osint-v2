@@ -15,8 +15,9 @@
     <header class="image-intelligence-head"><div><div class="eyebrow">LABORATÓRIO / ANÁLISE AVANÇADA</div><h2>Comparar, ler, localizar.</h2><p>Três métodos com níveis diferentes de privacidade. Nenhuma busca externa acontece automaticamente.</p></div><span class="image-method-tag">CONTROLE POR CONSULTA</span></header>
     <div class="image-methods">
       <article class="image-method"><span class="image-step">01 / LOCAL</span><h3>Similaridade visual</h3><p>Compare o dHash com as imagens já documentadas em todos os casos do cofre desbloqueado.</p><button id="image-local-search" type="button" class="method-button">Comparar no cofre</button><div id="image-local-status" class="image-method-result" role="status">Aguardando imagem.</div></article>
-      <article class="image-method"><span class="image-step">02 / OCR</span><h3>Reconhecimento de texto</h3><p>OCR em português e inglês no navegador. O motor e os idiomas são baixados somente após iniciar.</p><button id="image-ocr-run" type="button" class="method-button">Extrair texto</button><div id="image-ocr-status" class="image-method-result" role="status">Nenhum OCR executado.</div><button id="image-ocr-copy" class="text-action" type="button" hidden>Copiar texto extraído</button></article>
-      <article class="image-method"><span class="image-step">03 / WEB</span><h3>Busca reversa externa</h3><p>Localize páginas e imagens semelhantes via Google Cloud Vision, somente com credenciais configuradas.</p><div id="image-reverse-config" class="image-provider-status">Verificando serviço externo…</div><label class="image-consent"><input type="checkbox" id="image-reverse-consent" /> Autorizo transmitir esta imagem ao Google Cloud Vision.</label><label class="image-token-label" for="image-reverse-token">Chave administrativa temporária</label><input id="image-reverse-token" type="password" autocomplete="off" placeholder="Nunca armazenada no navegador" /><button id="image-reverse-run" type="button" class="method-button" disabled>Pesquisar na web</button><div id="image-reverse-status" class="image-method-result" role="status">Sem envio de dados.</div></article>
+      <article class="image-method"><span class="image-step">02 / OCR</span><h3>Reconhecimento de texto</h3><p>OCR em português e inglês no navegador. O motor e os idiomas são baixados somente após iniciar.</p><button id="image-ocr-run" type="button" class="method-button">Extrair texto</button><div id="image-ocr-status" class="image-method-result" role="status">Nenhum OCR executado.</div><button id="image-ocr-copy" class="text-action" type="button" hidden>Copiar texto extraído</button>
+      <button id="image-ocr-save" class="text-action" type="button" hidden>Guardar OCR no caso selecionado</button></article>
+      <article class="image-method"><span class="image-step">03 / WEB</span><h3>Busca reversa externa</h3><p>Localize páginas e imagens semelhantes via Google Cloud Vision, somente com credenciais configuradas.</p><div id="image-reverse-config" class="image-provider-status">Verificando serviço externo…</div><label class="image-consent"><input type="checkbox" id="image-reverse-consent" /> Autorizo transmitir esta imagem ao Google Cloud Vision.</label><label class="image-token-label" for="image-reverse-token">Chave administrativa temporária</label><input id="image-reverse-token" type="password" autocomplete="off" placeholder="Nunca armazenada no navegador" /><button id="image-reverse-run" type="button" class="method-button" disabled>Pesquisar na web</button><div id="image-reverse-status" class="image-method-result" role="status">Sem envio de dados.</div><div class="manual-reverse-links"><span>Alternativas manuais, sem integração automática:</span><a href="https://lens.google/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank">Google Lens</a><a href="https://tineye.com/" rel="noopener noreferrer" referrerpolicy="no-referrer" target="_blank">TinEye</a></div></article>
     </div>
     <p class="image-privacy-note">Comparação local: hashes e metadados do cofre criptografado. OCR: somente processamento local, mas o navegador busca componentes do Tesseract.js em um CDN na primeira execução. Busca web: upload explícito ao serviço externo, que pode cobrar pela consulta. Ausência de correspondência não comprova originalidade.</p>`;
   const output=$('#image-output');
@@ -89,8 +90,20 @@
       ocrText=String(result?.data?.text||'').trim().slice(0,12000);
       status('image-ocr-status',ocrText||'OCR concluído, mas nenhum texto legível foi identificado.');
       btn('image-ocr-copy').hidden=!ocrText;
+      btn('image-ocr-save').hidden=!ocrText;
     }catch(error){status('image-ocr-status',`OCR indisponível: ${error.message}`)}
     finally{if(worker)try{await worker.terminate()}catch{}button.disabled=false;button.textContent='Extrair texto';}
+  });
+  btn('image-ocr-save').addEventListener('click',async()=>{
+    try{
+      if(typeof browserVault==='undefined'||!browserVault||!browserVault.status().unlocked)throw Error('Desbloqueie o cofre em Meus casos.');
+      const caseId=$('#image-case')?.value;
+      if(!caseId)throw Error('Selecione um caso no formulário acima para registrar o OCR.');
+      if(!ocrText)throw Error('Execute OCR primeiro.');
+      await browserVault.addEvidence(caseId,{kind:'note',title:'OCR de imagem: '+String(file().name).slice(0,100),note:ocrText.slice(0,5000)});
+      status('image-ocr-status',ocrText+'\n\nRegistro OCR salvo criptografado no caso selecionado.');
+      if(typeof loadSummary==='function')await loadSummary();
+    }catch(error){status('image-ocr-status',String(error.message));}
   });
   btn('image-ocr-copy').addEventListener('click',async()=>{
     try{await navigator.clipboard.writeText(ocrText);status('image-ocr-status',ocrText+'\n\nTexto copiado para a área de transferência.');}

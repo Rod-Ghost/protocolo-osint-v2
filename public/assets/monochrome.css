@@ -141,3 +141,6 @@ html.light .image-method-result strong{color:#1d1e24}
 .feature-card .feature-icon,.feature-icon.fi-orange,.feature-icon.fi-purple,.feature-icon.fi-blue,.feature-icon.fi-teal{background:#26272b!important;color:#e4e4e8!important}
 .analysis-feature svg,.integration-symbol svg{color:#d5d5da!important}
 .rail-metric-icon.teal,.rail-metric-icon.violet,.rail-metric-icon.amber{color:#e2e2e5!important;background:#24252a!important}
+.manual-reverse-links{display:flex;flex-wrap:wrap;align-items:center;gap:9px;border-top:1px solid #303137;margin-top:13px;padding-top:10px;font-size:10px;color:#9899a1}
+.manual-reverse-links span{flex-basis:100%}.manual-reverse-links a{color:#e4e4e7;border-bottom:1px solid #81818b;text-decoration:none;padding-bottom:2px}
+.manual-reverse-links a:hover{border-bottom-color:#e52a43}

@@ -12,10 +12,13 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
 
 from .detection import DOMAIN
+from .engine_worker_runtime import worker_command, run_bounded_engine
 
 USERNAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{1,49}$")
 
@@ -35,7 +38,7 @@ ENGINES = (
     Engine("maigret", "maigret", "https://github.com/soxoj/maigret", "MIT", "username", "Análise de usernames públicos"),
     Engine("subfinder", "subfinder", "https://github.com/projectdiscovery/subfinder", "MIT", "domain", "Enumeração passiva de subdomínios"),
     Engine("amass", "amass", "https://github.com/owasp-amass/amass", "Apache-2.0*", "domain", "Enumeração passiva de DNS"),
-    Engine("spiderfoot", "spiderfoot", "https://github.com/smicallef/spiderfoot", "MIT", "service", "Plataforma extensível isolada, integração via processo ou serviço dedicado"),
+    Engine("spiderfoot", "spiderfoot", "https://github.com/smicallef/spiderfoot", "GPL-2.0-only", "domain", "Investigação passiva em CLI; requer instalação isolada no computador"),
 )
 
 
@@ -43,40 +46,74 @@ class EngineError(ValueError):
     pass
 
 
-def inventory() -> list[dict[str, Any]]:
-    """Report actual local CLI readiness using the same UI contract as Vercel.
+def spiderfoot_script() -> tuple[str, str] | None:
+    """Official sf.py checkout in its own venv; never execute arbitrary URLs.
 
-    Local execution never requires an administrator token. Engines remain
-    opt-in and must be installed on the operator's own computer.
+    OSINT_SPIDERFOOT_DIR is a *local* filesystem directory configured by
+    the workstation operator; it cannot be supplied through the HTTP API.
     """
+    root = os.environ.get("OSINT_SPIDERFOOT_DIR", "").strip()
+    if not root:
+        return None
+    directory = Path(root).expanduser()
+    python = Path(os.environ.get("OSINT_SPIDERFOOT_PYTHON", sys.executable)).expanduser()
+    script = directory / "sf.py"
+    if not directory.is_dir() or not script.is_file() or not python.is_file():
+        return None
+    return str(python.resolve()), str(script.resolve())
+
+
+def _installed(engine: Engine) -> bool:
+    return shutil.which(engine.executable) is not None or (
+        engine.id == "spiderfoot" and spiderfoot_script() is not None
+    )
+
+
+def inventory() -> list[dict[str, Any]]:
+    """Report real local tool availability in the shared Engine Studio schema."""
     opt_in = os.getenv("OSINT_ENABLE_LOCAL_ENGINES") == "1"
-    items = []
     titles = {"sherlock": "Sherlock", "maigret": "Maigret",
               "subfinder": "subfinder", "amass": "OWASP Amass",
               "spiderfoot": "SpiderFoot"}
+    items = []
     for engine in ENGINES:
-        installed = shutil.which(engine.executable) is not None
-        supported = engine.accepts != "service"
-        runnable = installed and opt_in and supported
+        installed = _installed(engine)
+        runnable = installed and opt_in
         if not installed:
-            status, reason = "not_installed", "Instale o executável no computador para utilizá-lo."
-        elif not supported:
-            status, reason = "worker_required", "Integração local por serviço ainda não implementada."
+            status, reason = "not_installed", "Instale o executável oficial ou configure o checkout local do SpiderFoot."
         elif not opt_in:
-            status, reason = "approval_required", "Ative OSINT_ENABLE_LOCAL_ENGINES=1 somente no ambiente local."
+            status, reason = "approval_required", "Ative OSINT_ENABLE_LOCAL_ENGINES=1 apenas no próprio computador."
         else:
-            status, reason = "ready", "Disponível neste computador, sem token ou login."
+            status, reason = "ready", "Motor local disponível, sem OAuth, token nem conta."
         items.append({
             "id": engine.id, "title": titles[engine.id],
             "project": engine.project, "source": engine.project,
             "license": engine.license, "accepts": engine.accepts,
-            "input_kind": engine.accepts if supported else "domain",
-            "mode": "local" if supported else "worker",
+            "input_kind": engine.accepts, "mode": "local",
             "description": engine.description,
-            "installed": installed, "enabled": opt_in and supported,
+            "installed": installed, "enabled": opt_in,
             "runnable": runnable, "status": status, "reason": reason,
         })
     return items
+
+
+def validate_local_job(engine_id: str, query: str) -> None:
+    """Reject disabled, malformed or uninstalled jobs before enqueueing."""
+    if os.getenv("OSINT_ENABLE_LOCAL_ENGINES") != "1":
+        raise EngineError("Motores locais desativados. Defina OSINT_ENABLE_LOCAL_ENGINES=1 no computador.")
+    script = spiderfoot_script() if engine_id == "spiderfoot" else None
+    worker_command(engine_id, query, which=shutil.which, spiderfoot_script=script)
+
+
+def run_local_job(engine_id: str, query: str, *, runner=subprocess.run) -> dict[str, Any]:
+    """Use the same bounded passive CLI runner as the private Daemon.
+
+    Validation is repeated on execution, not only when queued.
+    """
+    validate_local_job(engine_id, query)
+    script = spiderfoot_script() if engine_id == "spiderfoot" else None
+    return run_bounded_engine(engine_id, query, runner=runner,
+                              which=shutil.which, spiderfoot_script=script)
 
 
 def _command(engine: Engine, query: str) -> list[str]:
@@ -104,6 +141,8 @@ def run(engine_id: str, query: str, *, runner=subprocess.run) -> dict[str, Any]:
     engine = next((eng for eng in ENGINES if eng.id == engine_id), None)
     if engine is None:
         raise EngineError("Motor não reconhecido.")
+    if engine_id == "spiderfoot":
+        raise EngineError("SpiderFoot utiliza a fila local de tarefas; consulte /api/v1/local-engines/jobs.")
     if not shutil.which(engine.executable):
         raise EngineError(f"Motor {engine.id} não instalado neste ambiente.")
     command = _command(engine, query)

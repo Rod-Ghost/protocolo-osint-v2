@@ -185,12 +185,13 @@ async def get_engine_job(job_id: str, authorization: str | None = Header(default
     if not JOB_UUID_RE.fullmatch(job_id):
         raise HTTPException(422, "ID de tarefa inválido.")
     try:
-        from vercel.blob import get_blob
-        blob = await get_blob(f"osint-jobs/{job_id}/result.json", access="private")
+        from vercel.blob import get_blob, BlobNotFoundError
+        try:
+            blob = await get_blob(f"osint-jobs/{job_id}/result.json", access="private")
+        except BlobNotFoundError:
+            return {"job_id": job_id, "status": "pending", "notice": "Tarefa ainda não concluiu ou expirou."}
     except Exception as exc:
         raise HTTPException(503, "Armazenamento privado indisponível.") from exc
-    if blob is None:
-        return {"job_id": job_id, "status": "pending", "notice": "Tarefa ainda não concluiu ou expirou."}
     import json
     return json.loads(blob.body)
 

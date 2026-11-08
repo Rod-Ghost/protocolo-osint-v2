@@ -58,7 +58,7 @@ def _sections(data):
 def _markdown(data):
     def esc(value):
         value = _clean(value).replace("\\", "\\\\")
-        return re.sub(r"([*_{}\[\]()#+.!|<>])", r"\\\1", value)
+        return re.sub(r"([*_{}\[\]()#+!|<>])", r"\\\1", value)
     lines = ["# Protocolo OSINT V2 - Relatório investigativo", "",
              "**Documento preliminar; não confirma a autenticidade de fontes externas.**", ""]
     for title, rows in _sections(data):

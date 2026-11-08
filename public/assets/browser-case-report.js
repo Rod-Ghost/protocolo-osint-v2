@@ -3,7 +3,7 @@
   'use strict';
   const norm=value=>String(value==null?'':value)
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'');
-  const escapeMD=value=>norm(value).replace(/([\\*_{}\[\]()#+.!|<>])/g,'\\$1');
+  const escapeMD=value=>norm(value).replace(/([\\*_{}\[\]()#+!|<>])/g,'\\$1');
   function markdown(caseData, now) {
     if(!caseData || typeof caseData!=='object' || !Array.isArray(caseData.evidence)) {
       throw Error('Dados do caso inválidos.');

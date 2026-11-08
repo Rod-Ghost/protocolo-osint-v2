@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0] - 2026-11-08
+
+- Migração SQLite local aditiva, diário encadeado de integridade de metadados SHA-256 e verificação de divergências.
+- Preservados os casos anteriores, marcados legacy_unsealed sem inventar histórico.
+- Endpoints locais de auditoria e relatórios PDF/DOCX/Markdown em memória; não consultam fontes externas.
+- Relatório Markdown privado gerado no próprio cofre do navegador, sem upload de dados ao servidor.
+- Endpoints locais de casos e análise de imagens com proteção loopback e validação de origem.
+- Suite de testes ampliada. Nenhum banco ou recurso pago ativado na API pública.
+
+
 ## [0.4.0] — 2026-11-08
 
 - Implementado design **Aurum UI** (grafite/dourado, componentes compactos, dashboard responsivo, tema claro preservado) como camada sobre CSS original.

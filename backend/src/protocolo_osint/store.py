@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
+from .custody import install as install_custody, append as append_custody, inspect as inspect_custody
 
 
 def now(): return datetime.now(timezone.utc).isoformat()
@@ -40,6 +41,10 @@ class Store:
                     FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE
                 );
             ''')
+        with self._db() as db:
+            install_custody(db)
+        try: os.chmod(self.directory,0o700)
+        except OSError: pass
         try: os.chmod(self.db_path,0o600)
         except OSError: pass
 
@@ -56,7 +61,10 @@ class Store:
 
     def create_case(self,title,description):
         item={'id':uuid.uuid4().hex,'title':title,'description':description,'created_at':now()}
-        with self._db() as db: db.execute('INSERT INTO cases(id,title,description,created_at) VALUES (:id,:title,:description,:created_at)',item)
+        with self._db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('INSERT INTO cases(id,title,description,created_at) VALUES (:id,:title,:description,:created_at)',item)
+            append_custody(db,item['id'],'case_created',item['id'],item,item['created_at'])
         return item
 
     def get_case(self,case_id):
@@ -67,23 +75,31 @@ class Store:
             return {**dict(row),'evidence':[dict(x) for x in evidence]}
 
     def add_evidence(self,case_id,kind,title,url,note):
-        if not self.get_case(case_id): return None
         item={'id':uuid.uuid4().hex,'case_id':case_id,'kind':kind,'title':title,'url':url,'note':note,'created_at':now()}
         item['sha256']=hashlib.sha256(canonical(item).encode()).hexdigest()
         with self._db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if db.execute('SELECT 1 FROM cases WHERE id=?',(case_id,)).fetchone() is None:return None
             db.execute('INSERT INTO evidence(id,case_id,kind,title,url,note,sha256,created_at) VALUES (:id,:case_id,:kind,:title,:url,:note,:sha256,:created_at)',item)
+            append_custody(db,case_id,'evidence_registered',item['id'],item,item['created_at'])
         return item
 
     def add_image(self,case_id,title,sha256,dhash):
-        if not self.get_case(case_id):return None
         item={'id':uuid.uuid4().hex,'case_id':case_id,'title':title,'sha256':sha256,'dhash':dhash,'created_at':now()}
         with self._db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if db.execute('SELECT 1 FROM cases WHERE id=?',(case_id,)).fetchone() is None:return None
             db.execute('INSERT INTO image_index(id,case_id,title,sha256,dhash,created_at) VALUES (:id,:case_id,:title,:sha256,:dhash,:created_at)',item)
+            append_custody(db,case_id,'image_indexed',item['id'],item,item['created_at'])
         return item
 
     def image_matches(self,case_id,dhash,max_distance=12):
         with self._db() as db: items=db.execute('SELECT * FROM image_index WHERE case_id=?',(case_id,)).fetchall()
         return sorted(({**dict(x),'distance':(int(dhash,16)^int(x['dhash'],16)).bit_count()} for x in items if (int(dhash,16)^int(x['dhash'],16)).bit_count()<=max_distance),key=lambda x:x['distance'])[:8]
+
+    def custody(self,case_id,*,include_events=False):
+        with self._db() as db:
+            return inspect_custody(db,case_id,include_events=include_events)
 
     def graph(self,case_id):
         case=self.get_case(case_id)

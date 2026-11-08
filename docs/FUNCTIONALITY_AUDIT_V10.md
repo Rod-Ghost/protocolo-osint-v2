@@ -19,9 +19,9 @@ Esta versão entrega dez operações determinísticas sem rede. Não equivale à
 13 | Documentos | Parcial: extração lexical; PDF/DOCX pendentes |
 14 | Geolocalização | Pendente: fontes geográficas |
 15 | Busca semântica | Pendente: índice vetorial e permissões |
-16 | Cadeia de custódia | Parcial: manifesto de hashes declarados |
+16 | Cadeia de custódia | Parcial v1.1: eventos de metadados SQLite locais encadeados; não comprova bytes originais |
 17 | Metodologia | Parcial: checklist de seis etapas |
-18 | Relatórios | Parcial: rascunho Markdown com hash |
+18 | Relatórios | Parcial v1.1: Markdown no cofre browser e PDF/DOCX do backend local; não autenticam fontes |
 19 | MCP | Parcial anterior: cliente/servidor de leitura |
 20 | Multiagentes | Pendente: orquestração, custos e revisão |
 
@@ -41,3 +41,7 @@ GET /api/v1/lab/capabilities e POST /api/v1/lab/analyze implementam timeline, en
 ## Próximas implementações
 
 Autenticação por usuário, isolamento de casos, quotas e banco persistente são pré-requisitos para ingestão de arquivos, agentes, indexação semântica e monitoramento.
+
+## V1.1 - Limitações dos novos módulos
+
+Custódia e relatórios locais implementados e documentados. A auditoria do banco não corresponde a prova judicial e o cofre browser continua separado do SQLite. Ver docs/CUSTODY_AND_REPORTS_V11.md.

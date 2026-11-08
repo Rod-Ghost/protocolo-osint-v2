@@ -32,3 +32,7 @@
 ## Limites
 
 O sistema **não é** multiusuário, não garante cadeia de custódia judicial e não faz reconhecimento facial, coleta automática da web nem busca reversa global. Para produção multiusuário serão necessários autenticação, autorização, migrations, API limits, observabilidade e tratamento adicional de dados pessoais.
+
+## Complemento v1.1
+
+backend/src/protocolo_osint/custody.py mantém diário de metadados por caso em SQLite sem alterar o esquema original. case_reports.py cria relatórios PDF/DOCX/Markdown em memória usando extras opcionais. main.py limita rotas de casos ao loopback. hosted_api.py continua sem SQLite. A interface gera relatórios Markdown diretamente do cofre AES-GCM já existente, sem enviar os dados. Criptografia de banco, ancoragem externa e autenticação por operador permanecem pendentes.

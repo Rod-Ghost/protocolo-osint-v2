@@ -141,3 +141,13 @@ fixados para reduzir duplicação e preservar rastreabilidade. Foram adicionadas
 salvaguardas de reentrega e uma cadência de heartbeat/poll compatível com
 os limites Hobby. **Até validação de daemon, autenticação e uma consulta
 autorizada, os motores não devem ser apresentados como operacionais ao vivo.**
+
+
+## Piloto operacional v1.4 — cinco motores, mesmo projeto Vercel
+
+O projeto único adiciona um Daemon em `gru1`, com **1 GiB** de memória
+no Hobby e nenhum endpoint HTTP novo. A fila é privada, autenticada,
+e os resultados ficam em Blob privado. O estado de uma implantação não
+comprova funcionamento das consultas; confira o heartbeat e um teste
+real autorizado. Uma instância 24/7 consome a franquia de 420 GB-horas
+em ~17,5 dias. Consulte `docs/ENGINE_DEPLOYMENT_V14.md`.

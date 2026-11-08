@@ -25,8 +25,10 @@ from protocolo_osint.target_routing import validate_target, select_engines
     ("https://example.org/path?id=1", "url", "example.org"),
     ("test@example.org", "email", "test@example.org"),
     ("8.8.8.8", "ip", "8.8.8.8"),
+    ("2001:4860:4860::8888", "ip", "2001:4860:4860::8888"),
     ("8.8.8.0/28", "cidr", "8.8.8.0/28"),
     ("AS15169", "asn", "15169"),
+    ("2001:4860:4860::8888", "ip", "2001:4860:4860::8888"),
     ("+5511999999999", "phone", "+5511999999999"),
     ("Maria Silva", "name", "Maria Silva"),
     ("1HesYJSP1QqcyPEjnQ9vzBL1wujruNGe7R", "bitcoin", "1HesYJSP1QqcyPEjnQ9vzBL1wujruNGe7R"),
@@ -81,7 +83,7 @@ def test_subfinder_290_no_unsupported_flag():
 
 @pytest.mark.parametrize(("input_value", "kind", "seed"), [
     ("rod.roldan", "username", '"rod.roldan"'),
-    ("Maria Silva", "name", '"Maria Silva"'),
+    ("Maria Silva", "name", "Maria Silva"),
     ("test@example.org", "email", "test@example.org"),
     ("8.8.8.8", "ip", "8.8.8.8"),
     ("8.8.8.0/28", "cidr", "8.8.8.0/28"),
@@ -168,3 +170,18 @@ def test_hosted_url_is_hostname_only_and_no_path_disclosed(monkeypatch):
     assert response.status_code == 202
     assert response.json()["normalized_target"] == "example.org"
     assert all(target=="example.org" for _,target in received)
+
+
+def test_pinned_spiderfoot_patch_checks_official_v4_fallback():
+    """The container's compatibility patch must reject unknown upstream revisions."""
+    from pathlib import Path
+    import runpy
+    root = Path(__file__).resolve().parents[2]
+    module = runpy.run_path(str(root / "deploy/engines/patch_spiderfoot_cli.py"))
+    old = module["OLD"]
+    source = "from spiderfoot import SpiderFootHelpers\n" + old + "\n"
+    patched = module["patch_cli"](source)
+    assert "SpiderFootHelpers.targetTypeFromString(target) is None" in patched
+    assert old not in patched
+    with pytest.raises(ValueError):
+        module["patch_cli"]("print('unknown upstream')\n")

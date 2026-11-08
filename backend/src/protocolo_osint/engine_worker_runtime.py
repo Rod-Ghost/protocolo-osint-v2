@@ -22,15 +22,27 @@ MAX_STDERR = 2000
 MAX_RESULTS = 120
 
 
-def worker_command(engine_id: str, value: str, which=shutil.which) -> list[str]:
-    """Build a passive-only command with fixed flags, never shell interpolation."""
+def worker_command(engine_id: str, value: str, which=shutil.which,
+                   spiderfoot_script: tuple[str, str] | None = None) -> list[str]:
+    """Build a passive-only command with fixed flags, never shell interpolation.
+
+    The optional script entrypoint supports the official SpiderFoot checkout
+    installed in a separate local Python environment. The Vercel worker retains
+    its original command and packaged binary.
+    """
     spec = next((x for x in ENGINES if x.id == engine_id), None)
     if spec is None:
         raise EngineError("Motor não reconhecido.")
     target = _validate(spec, value)
     binary = which(spec.executable)
-    if binary is None:
-        raise EngineError(f"{spec.title} não instalado neste worker.")
+    if engine_id == "spiderfoot" and spiderfoot_script is not None:
+        python, script = spiderfoot_script
+        prefix = [python, script]
+    elif binary is not None:
+        prefix = [binary]
+    else:
+        raise EngineError(f"{spec.title} não instalado neste ambiente.")
+    binary = prefix[0]
     if engine_id == "sherlock":
         return [binary, "--print-found", "--no-color", "--timeout", "5", "--site", "GitHub", "--site", "GitLab", "--site", "Reddit", target]
     if engine_id == "maigret":
@@ -41,15 +53,20 @@ def worker_command(engine_id: str, value: str, which=shutil.which) -> list[str]:
         return [binary, "enum", "-passive", "-d", target, "-timeout", "3", "-nocolor", "-silent"]
     if engine_id == "spiderfoot":
         # Stable SpiderFoot CLI supports a passive-only module set and JSON output.
-        return [binary, "-s", target, "-u", "passive", "-o", "json", "-max-threads", "2", "-q"]
+        return [*prefix, "-s", target, "-u", "passive", "-o", "json", "-max-threads", "2", "-q"]
     raise EngineError("Motor não implementado.")
 
 
-def run_worker_engine(engine_id: str, value: str, *, runner: Callable = subprocess.run, which=shutil.which) -> dict:
-    """Run only a named CLI, in a temporary home, bounded by hard time limits."""
-    if os.getenv("OSINT_WORKER_AUTHORIZED") != "1":
-        raise EngineError("Worker não autorizado para executar consultas.")
-    cmd = worker_command(engine_id, value, which=which)
+def run_bounded_engine(engine_id: str, value: str, *, runner: Callable = subprocess.run,
+                       which=shutil.which,
+                       spiderfoot_script: tuple[str, str] | None = None) -> dict:
+    """Shared sandbox runner. Callers MUST enforce their own trust boundary.
+
+    Hosted Daemons require OSINT_WORKER_AUTHORIZED; the local API separately
+    requires loopback + OSINT_ENABLE_LOCAL_ENGINES. Never call from public HTTP.
+    """
+    cmd = worker_command(engine_id, value, which=which,
+                         spiderfoot_script=spiderfoot_script)
     with tempfile.TemporaryDirectory(prefix="protocolo-engine-") as temp:
         try:
             result = runner(
@@ -83,6 +100,14 @@ def run_worker_engine(engine_id: str, value: str, *, runner: Callable = subproce
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "warning": "Saída bruta do motor. Não confirma identidade ou titularidade; verifique fontes independentemente.",
     }
+
+
+def run_worker_engine(engine_id: str, value: str, *, runner: Callable = subprocess.run,
+                      which=shutil.which) -> dict:
+    """Hosted Daemon security gate preserved: no CLI without operator opt-in."""
+    if os.getenv("OSINT_WORKER_AUTHORIZED") != "1":
+        raise EngineError("Worker não autorizado para executar consultas.")
+    return run_bounded_engine(engine_id, value, runner=runner, which=which)
 
 
 def inventory(which=shutil.which):

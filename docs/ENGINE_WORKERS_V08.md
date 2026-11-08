@@ -26,7 +26,7 @@ O runtime de Daemon é **um componente separado** do backend HTTP do Protocolo O
 
 A fila é habilitada somente depois de existir um **usuário administrador autenticado por requisição**; jamais usar flag global como substituto da autenticação. Os workers não recebem credenciais de terceiros automaticamente, e os termos/limites de sites devem ser respeitados. O consumidor precisa de Vercel OIDC com permissões de Queue, Private Blob com autenticação e políticas de retenção/limpeza. Criar a Private Blob store no projeto correto e testar os identificadores antes de alterar produção. Daemons é uma funcionalidade beta **com instâncias contínuas e potencial de cobrança**.
 
-`OSINT_ENGINE_QUEUE_ENABLED` é zero por padrão. `OSINT_WORKER_AUTHORIZED=1` apenas na imagem privada dedicada. Não publicar `BLOB_READ_WRITE_TOKEN`, sessão do usuário ou tokens de fontes. Os resultados são sensíveis e só podem ser lidos depois de verificar o proprietário/escopo do job.
+`OSINT_ENGINE_QUEUE_ENABLED` é zero por padrão. `OSINT_WORKER_AUTHORIZED=0` por padrão na imagem; definir `1` somente como variável de produção do daemon isolado, após configurar Queue/Private Blob e controle de custos. Sem essa autorização a inicialização falha de forma segura. Não publicar `BLOB_READ_WRITE_TOKEN`, sessão do usuário ou tokens de fontes. Os resultados são sensíveis e só podem ser lidos depois de verificar o proprietário/escopo do job.
 
 **Estado de validação:** os testes locais com runner simulado cobrem cinco comandos e gravação privada; ainda não são um build Docker completo nem prova de varredura real. O job de CI de supply chain executa o build quando acionado pelo GitHub. Manter a atualização em branch de preview até o build confirmar que as cinco ferramentas iniciam.
 

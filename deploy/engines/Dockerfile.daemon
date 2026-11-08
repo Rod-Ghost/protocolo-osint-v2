@@ -10,7 +10,7 @@ RUN mkdir -p /opt/bin && \
 FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     PYTHONPATH=/workspace/backend/src HOME=/tmp \
-    OSINT_WORKER_AUTHORIZED=1 VERCEL_REGION=gru1
+    OSINT_WORKER_AUTHORIZED=0 VERCEL_REGION=gru1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates git libxml2 libxslt1.1 libjpeg62-turbo && \
     rm -rf /var/lib/apt/lists/*

@@ -45,3 +45,12 @@ Usar dados sintéticos durante testes. Nunca expor o servidor sem autenticação
 - A Vercel da conta vinculada pelo proprietário foi criada externamente. O assistente não tem acesso confirmado à leitura desse workspace no conector; não confundir commit publicado no GitHub com site online em produção.
 
 **Pendências:** autenticação multiusuário, sincronização segura, rate limiting distribuído, análise real de OCR em hospedagem, integração CLI em workers isolados, MCP remoto autenticado, observabilidade e auditoria de licenças.
+
+
+## V0.5 — verificações adicionais e limites
+
+- Testes unitários de `engine_hub` realizados localmente: seis aprovados, usando runner controlado.
+- `test_hosted_engines.py` cobre inventário real, bloqueio por padrão, chave ausente/incorreta, autorização controlada e ID inválido. Execução efetiva de Sherlock/Maigret em produção não foi verificada por esses testes.
+- A suíte histórica foi atualizada: `GET /api/v1/engines` agora deve retornar inventário de leitura e `POST /api/v1/engines/run` deve negar execução não habilitada.
+- Estáticos e CSS não substituem os fluxos legados; o Engine Studio usa CSS `obsidian.css` e JS `engine-ui.js` com verificação de sintaxe no CI.
+- O contêiner experimental é especificação, não execução validada. Antes de habilitar um Worker, revisar licença e dependências transitivas, isolamento de processos, limites/custos e autenticação.

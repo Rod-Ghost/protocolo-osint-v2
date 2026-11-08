@@ -4,18 +4,21 @@ This module is intentionally separate from main.py, the full local application.
 """
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .catalog import SOURCES, list_sources, plan
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
+from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
@@ -107,6 +110,36 @@ def live_lookup(payload: LookupRequest):
         raise HTTPException(422 if "exige" in str(exc).lower() or "username" in str(exc).lower() else 502, str(exc)) from exc
 
 
+
+class EngineRequest(BaseModel):
+    engine: Literal["sherlock", "maigret", "subfinder", "amass", "spiderfoot"]
+    value: str = Field(min_length=2, max_length=253)
+
+
+@app.get("/api/v1/engines")
+def engine_status():
+    """Read-only runtime detection; does not trigger third-party requests."""
+    return {"engines": engine_inventory(), "execution_policy": "authenticated-opt-in",
+            "notice": "Instalação não equivale a execução validada; motores longos precisam de worker."}
+
+
+@app.post("/api/v1/engines/run")
+def engine_run(payload: EngineRequest, authorization: str | None = Header(default=None)):
+    """Disabled by default; requires server-side flag, secret and explicit action."""
+    if os.getenv("OSINT_ENGINE_EXECUTION_ENABLED") != "1":
+        raise HTTPException(503, "Execução remota desabilitada. Nenhum motor foi consultado.")
+    secret = os.getenv("OSINT_ENGINE_TOKEN", "")
+    if len(secret) < 32:
+        raise HTTPException(503, "Execução não configurada pelo administrador.")
+    token = (authorization or "").removeprefix("Bearer ")
+    if not authorization or not authorization.startswith("Bearer ") or not hmac.compare_digest(token, secret):
+        raise HTTPException(401, "Credencial de execução inválida.")
+    try:
+        return execute_engine(payload.engine, payload.value)
+    except EngineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @app.get("/api/v1/integrations")
 def integrations():
     return {"integrations": [
@@ -115,8 +148,8 @@ def integrations():
         {"name": "Certificados CT", "status": "experimental", "detail": "Consulta opcional a crt.sh"},
         {"name": "GitHub público", "status": "experimental", "detail": "Consulta opcional de perfis públicos via REST"},
         {"name": "Laboratório de imagens", "status": "active", "detail": "Hash SHA-256/dHash no próprio navegador"},
-        {"name": "Sherlock / Maigret", "status": "planned", "detail": "Adaptadores locais: executar somente com instalação e controles próprios"},
-        {"name": "SpiderFoot / subfinder / Amass", "status": "planned", "detail": "Exigem worker isolado e orquestração de tarefas"},
+        {"name": "Sherlock / Maigret", "status": "experimental", "detail": "Pacotes Python fixados por versão; execução exige autorização e validação real."},
+        {"name": "SpiderFoot / subfinder / Amass", "status": "planned", "detail": "Contêiner preparado, mas worker e orquestração ainda não implantados."},
         {"name": "Casos, grafo e evidências", "status": "planned", "detail": "Exigem autenticação e banco por usuário para acesso público"},
         {"name": "MCP remoto", "status": "planned", "detail": "Acesso remoto requer autenticação e autorização explícitas"},
     ]}

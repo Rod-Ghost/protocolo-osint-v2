@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "fastapi",
   "functions": {
-    "app.py": {"maxDuration": 15}
+    "app.py": {"maxDuration": 40}
   },
   "headers": [{"source": "/(.*)", "headers": [
     {"key": "X-Content-Type-Options", "value": "nosniff"},

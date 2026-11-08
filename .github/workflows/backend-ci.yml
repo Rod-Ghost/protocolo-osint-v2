@@ -24,6 +24,8 @@ jobs:
           node-version: '22'
       - run: node --check apps/web/assets/app.js
       - run: node --check apps/web/assets/vault.js
+      - run: node --check apps/web/assets/engine-ui.js
+      - run: node --check public/assets/engine-ui.js
   check-provenance:
     runs-on: ubuntu-latest
     steps:

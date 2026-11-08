@@ -111,7 +111,7 @@ def _argv(spec: Engine, query: str) -> list[str]:
     if spec.id == 'maigret':
         return [path, query, '--no-recursion', '--top-sites', '15', '--timeout', '4', '--max-connections', '5']
     if spec.id == 'subfinder':
-        return [path, '-silent', '-d', query, '-timeout', '4', '-max-time', '1', '-max-results', '30']
+        return [path, '-silent', '-d', query, '-timeout', '4', '-max-time', '1', '-rl', '5']
     raise EngineError(f'{spec.title} requer um worker específico, não uma chamada HTTP síncrona.')
 
 

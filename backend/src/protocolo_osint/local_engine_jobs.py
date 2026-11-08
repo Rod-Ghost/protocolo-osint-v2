@@ -21,6 +21,10 @@ MAX_STORED_JOBS = 12
 RESULT_TTL_SECONDS = 3600
 
 
+class LocalQueueFull(EngineError):
+    """Limit reached before a CLI process was started."""
+
+
 def _utc() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -52,7 +56,7 @@ class LocalEngineJobManager:
             self._prune()
             active = sum(x["status"] in {"queued", "running"} for x in self._jobs.values())
             if active >= MAX_ACTIVE_JOBS:
-                raise EngineError("Fila local cheia: conclua as três tarefas existentes antes de enviar outra.")
+                raise LocalQueueFull("Fila local cheia: conclua as três tarefas existentes antes de enviar outra.")
             job_id = uuid.uuid4().hex
             self._jobs[job_id] = {
                 "job_id": job_id, "engine": engine, "target": target,

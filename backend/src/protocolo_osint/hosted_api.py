@@ -19,7 +19,8 @@ from .investigation_lab import analyze as lab_analyze, OPERATIONS as LAB_OPERATI
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
-from .image_routes import router as image_router
+from .image_routes import router as image_router, ReverseRequest
+from .reverse_image import availability as reverse_availability, search as reverse_search, ReverseImageError
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE, HEARTBEAT_FRESHNESS_SECONDS
 from .operator_auth import (
@@ -375,6 +376,20 @@ async def operator_search(request: Request, payload: OperatorSearchRequest):
         "errors": errors, "records_verified": False,
         "notice": "Tarefas submetidas ao Daemon. Resultados requerem consulta e validação de fontes; não há confirmação de identidade."
     }
+
+
+@app.post("/api/v1/operator/images/reverse")
+def operator_reverse_image(request: Request, payload: ReverseRequest):
+    """Explicit, authenticated Vision search; never upload an image implicitly."""
+    require_operator(request, csrf=True)
+    if not reverse_availability().get("configured"):
+        raise HTTPException(503, "Pesquisa externa de imagem não configurada. OCR local e busca manual continuam disponíveis.")
+    try:
+        return reverse_search(payload.content_base64, payload.mime_type)
+    except ReverseImageError as exc:
+        message = str(exc)
+        code = 422 if any(word in message.lower() for word in ("formato", "limite", "vazia", "conteúdo", "corresponde")) else 502
+        raise HTTPException(code, message) from exc
 
 
 @app.get("/api/v1/operator/jobs/{job_id}")

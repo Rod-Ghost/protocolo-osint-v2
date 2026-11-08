@@ -17,7 +17,7 @@ from urllib.parse import urlencode, urlsplit
 
 import httpx
 from fastapi import HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 
 SESSION_COOKIE = "__Host-osint-operator"
 STATE_COOKIE = "__Host-osint-oauth"
@@ -199,10 +199,9 @@ async def callback(request: Request, *, code: str, state: str) -> RedirectRespon
     return response
 
 
-def logout(request: Request) -> RedirectResponse:
+def logout(request: Request) -> JSONResponse:
     require_operator(request, csrf=True)
-    settings = _settings()
-    response = RedirectResponse(settings["origin"] + "/#engines", status_code=303)
+    response = JSONResponse({"ok": True, "authenticated": False})
     response.delete_cookie(SESSION_COOKIE, secure=True, httponly=True, samesite="lax", path="/")
     response.headers["Cache-Control"] = "no-store"
     return response

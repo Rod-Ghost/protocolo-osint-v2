@@ -73,3 +73,15 @@ Os adaptadores locais são opcionais, **não instalados automaticamente**. A con
 - `docs/` — [Design System](docs/DESIGN_SYSTEM_AURUM.md), [Integrações](docs/INTEGRATIONS_V04.md), [Arquitetura](docs/ARCHITECTURE.md), [Hospedagem](docs/HOSTING_VERCEL.md), [Roadmap](docs/ROADMAP.md), [Proveniência](docs/IP_PROVENANCE.md).
 
 A evolução segue o princípio **preservar, testar, migrar e ampliar**. A V2 ainda não reproduz integralmente as funcionalidades do HTML legado; a análise de cobertura continua em [`docs/LEGACY_COVERAGE.md`](docs/LEGACY_COVERAGE.md).
+
+
+## V0.5 — Obsidian Red / Engine Studio
+
+A interface de desenvolvimento inclui o tema próprio **Obsidian Red** (preto, vermelho e branco), microinterações acessíveis com `prefers-reduced-motion` e painel de cinco motores de terceiros. Não são apresentados resultados simulados como buscas reais.
+
+- `GET /api/v1/engines` — status **efetivo** dos executáveis instalados (inventário somente leitura).
+- `POST /api/v1/engines/run` — execução limitada de Sherlock, Maigret e subfinder, **desabilitada por padrão**. Precisa de `OSINT_ENGINE_EXECUTION_ENABLED=1` e `OSINT_ENGINE_TOKEN` seguro, apenas no servidor. Não exponha este token no repositório, páginas ou logs; sem autenticação por usuários, cotas distribuídas e proteção antiabuso, não permita acesso público a esse recurso.
+- Sherlock `0.16.2` e Maigret `0.6.6`: declarados como dependências pip fixadas de `requirements.txt`, com suas licenças mantidas. Instalado **não é igual a operacionalmente validado**.
+- subfinder, OWASP Amass e SpiderFoot: a imagem experimental `deploy/engines/Dockerfile` é um **plano de implantação**, não um worker de produção. Sua disponibilidade no catálogo não significa execução no site.
+- `apps/web/assets/obsidian.css`, `apps/web/assets/engine-ui.js` e as versões sincronizadas em `public/assets/` preservam os módulos existentes sem substituição destrutiva.
+- Testes: ver `backend/tests/test_engine_hub.py` e `backend/tests/test_hosted_engines.py`; checks de CI devem passar antes do merge. Estado de produção deve ser verificado por URL e logs reais.

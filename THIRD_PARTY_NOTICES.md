@@ -30,6 +30,12 @@ O catálogo de 41 fontes é uma lista de **destinos externos** (links), sem parc
 
 A V2 referencia e pode instalar **Sherlock Project 0.16.2** (licença MIT, [licença e código oficial](https://github.com/sherlock-project/sherlock)) e **Maigret 0.6.6** (licença MIT, [licença e código oficial](https://github.com/soxoj/maigret)) via gerenciador pip. Isso não altera a titularidade dos projetos nem as obrigações de preservar os avisos de copyright/licença distribuídos nos respectivos pacotes e dependências transitivas.
 
+Para SpiderFoot **v4.0**, o Daemon aplica um patch pontual à **cópia instalada**
+de `sf.py` (arquivo `deploy/engines/patch_spiderfoot_cli.py`) para evitar
+classificar ASN, IPv6 e endereços Bitcoin como usernames no CLI. A GPLv2
+e os avisos do upstream continuam aplicáveis. O projeto original
+não é incorporado ao repositório Protocolo OSINT.
+
 O contêiner de referência `deploy/engines/Dockerfile` descreve a instalação de **subfinder** (MIT, https://github.com/projectdiscovery/subfinder), **OWASP Amass** (Apache-2.0; componentes podem ter licenças próprias, https://github.com/owasp-amass/amass) e **SpiderFoot v4.0** (GPLv2, https://github.com/smicallef/spiderfoot/tree/v4.0). Este contêiner ainda não foi construído, auditado ou hospedado em produção. A licença definitiva de **código original** da V2 permanece pendente.
 
 **Retificação do texto anterior:** os adaptadores continuam independentes, mas a API pública agora apresenta inventário e possui uma rota de execução **bloqueada por padrão e protegida por chave no servidor**. A API não permite executar motores sem opt-in explícito. Não devem ser interpretados resultados de terceiros como confirmação de identidade.

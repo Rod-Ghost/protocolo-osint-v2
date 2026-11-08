@@ -43,9 +43,11 @@ O modo **local-first** usa o servidor FastAPI em `127.0.0.1` e o
 painel Engine Studio sem solicitar `OSINT_ENGINE_TOKEN`. Para executar
 motores locais, o operador instala os executáveis desejados e define
 `OSINT_ENABLE_LOCAL_ENGINES=1` no processo local (ativação simples,
-**não** credencial). Sherlock, Maigret, subfinder e Amass têm adaptadores
-locais; SpiderFoot continua exigindo serviço/worker e não deve ser
-anunciado como CLI local operacional. Nenhum OAuth é necessário.
+**não** credencial). Sherlock, Maigret, subfinder, Amass **e SpiderFoot** contam com
+comandos passivos limitados na **fila local**. SpiderFoot requer a instalação
+da ferramenta oficial, preferencialmente isolada em uma venv. Cada motor é
+apresentado como executável somente se detectado no computador. Nenhum OAuth
+é necessário e a API pública Vercel não libera execução anônima.
 
 A **Vercel** é um ambiente separado de demonstração e homologação.
 Seus motores em fila permanecem restritos a autenticação administrativa,

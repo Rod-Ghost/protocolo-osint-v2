@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict');
 const m=require('../apps/web/assets/mcp-client.js');
 assert.equal(m.validateEndpoint('https://example.org/mcp'),'https://example.org/mcp');
+assert.equal(m.presets.find(x=>x.id==='protocolo').url,'https://protocolo-osint-v2-nine.vercel.app/mcp/');
 for(const u of ['http://example.org','https://localhost/mcp','https://127.0.0.1/mcp','https://[::1]/mcp','https://user:pw@example.org/mcp','https://example.org/mcp#secret'])assert.throws(()=>m.validateEndpoint(u));
 assert.deepEqual(m.safeArgs('{"target":"example.org"}'),{target:'example.org'});
 for(const s of ['[]','"hi"','{invalid'])assert.throws(()=>m.safeArgs(s));

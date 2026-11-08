@@ -53,3 +53,20 @@ def test_unrecognized_engine_validation(monkeypatch):
     monkeypatch.setenv('OSINT_ENGINE_TOKEN','long-test-secret-not-for-production-0000000')
     response=client.post('/api/v1/engines/run',json={'engine':'arbitrary','value':'exampleuser'},headers={'Authorization':'Bearer long-test-secret-not-for-production-0000000'})
     assert response.status_code==422
+
+
+def test_real_worker_heartbeat_changes_catalog_without_running_http_process(monkeypatch):
+    from protocolo_osint import hosted_api
+    async def fake_heartbeat():
+        return {"configured": True, "workers_health": "heartbeat-recent",
+                "engines": [{"engine": "amass", "installed": True}, {"engine": "spiderfoot", "installed": True}]}
+    monkeypatch.setattr(hosted_api, "engine_queue_capabilities", fake_heartbeat)
+    response = client.get("/api/v1/engines")
+    assert response.status_code == 200
+    data=response.json()
+    assert data["workers_health"] == "heartbeat-recent"
+    by_id={row["id"]: row for row in data["engines"]}
+    for name in ("amass", "spiderfoot"):
+        assert by_id[name]["installed"] is True
+        assert by_id[name]["status"] == "worker_available"
+        assert by_id[name]["runnable"] is False

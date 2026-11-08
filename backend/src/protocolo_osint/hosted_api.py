@@ -128,10 +128,21 @@ class EngineRequest(BaseModel):
 
 
 @app.get("/api/v1/engines")
-def engine_status():
-    """Read-only runtime detection; does not trigger third-party requests."""
-    return {"engines": engine_inventory(), "execution_policy": "authenticated-opt-in",
-            "notice": "Instalação não equivale a execução validada; motores longos precisam de worker."}
+async def engine_status():
+    """Inspect both HTTP runtime and verified PRIVATE worker heartbeat."""
+    items = engine_inventory()
+    heartbeat = await engine_queue_capabilities()
+    if heartbeat.get("workers_health") == "heartbeat-recent":
+        worker_tools = {x["engine"] for x in heartbeat.get("engines", []) if x.get("installed") is True}
+        for item in items:
+            if item["id"] in worker_tools:
+                item["installed"] = True
+                item["runnable"] = False  # never allow a worker CLI in synchronous HTTP
+                item["status"] = "worker_available"
+                item["reason"] = "Executável presente no Daemon recente; utilize a fila autenticada. Consulta não testada."
+    return {"engines": items, "execution_policy": "authenticated-opt-in",
+            "workers_health": heartbeat.get("workers_health", "unverified"),
+            "notice": "Presença recente de worker não comprova sucesso das consultas externas."}
 
 
 @app.post("/api/v1/engines/run")

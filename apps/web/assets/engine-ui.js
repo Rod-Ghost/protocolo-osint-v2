@@ -6,7 +6,7 @@
   const escapeHTML = (v='') => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const state = {engines:[],selected:'sherlock',loading:false,ran:false};
   const names = {
-    ready:'EXECUTÁVEL', approval_required:'AGUARDA ACESSO', worker_required:'WORKER',
+    ready:'EXECUTÁVEL', approval_required:'AGUARDA ACESSO', worker_required:'WORKER', worker_available:'WORKER ATIVO',
     not_installed:'NÃO INSTALADO', unavailable:'SEM CONEXÃO'
   };
   const group = q('#primary-nav');

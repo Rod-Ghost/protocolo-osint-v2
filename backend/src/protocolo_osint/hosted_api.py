@@ -20,6 +20,7 @@ from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
+from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE
 
 VERSION = "0.8.0"
 ROOT = Path(__file__).resolve().parents[3]
@@ -148,6 +149,60 @@ def engine_run(payload: EngineRequest, authorization: str | None = Header(defaul
         return execute_engine(payload.engine, payload.value)
     except EngineError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+
+@app.post("/api/v1/engines/jobs")
+async def create_engine_job(payload: EngineRequest, authorization: str | None = Header(default=None)):
+    """Private operator only. Requires explicitly enabled durable infrastructure."""
+    if os.getenv("OSINT_ENGINE_QUEUE_ENABLED") != "1":
+        raise HTTPException(503, "Fila de motores não está implantada neste ambiente.")
+    secret = os.getenv("OSINT_ENGINE_TOKEN", "")
+    if len(secret) < 32:
+        raise HTTPException(503, "Autenticação administrativa não configurada.")
+    received = (authorization or "").removeprefix("Bearer ")
+    if not authorization or not authorization.startswith("Bearer ") or not hmac.compare_digest(received, secret):
+        raise HTTPException(401, "Credencial inválida.")
+    try:
+        return await queue_submit(payload.engine, payload.value, authenticated=True)
+    except EngineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(503, "Fila indisponível. Nenhum processamento confirmado.") from exc
+
+
+@app.get("/api/v1/engines/jobs/{job_id}")
+async def get_engine_job(job_id: str, authorization: str | None = Header(default=None)):
+    """Read result from PRIVATE Blob only for the operator with the server token."""
+    if os.getenv("OSINT_ENGINE_QUEUE_ENABLED") != "1":
+        raise HTTPException(503, "Fila de motores desativada.")
+    secret = os.getenv("OSINT_ENGINE_TOKEN", "")
+    if len(secret) < 32:
+        raise HTTPException(503, "Autenticação administrativa não configurada.")
+    received = (authorization or "").removeprefix("Bearer ")
+    if not authorization or not authorization.startswith("Bearer ") or not hmac.compare_digest(received, secret):
+        raise HTTPException(401, "Credencial inválida.")
+    if not JOB_UUID_RE.fullmatch(job_id):
+        raise HTTPException(422, "ID de tarefa inválido.")
+    try:
+        from vercel.blob import get_blob
+        blob = await get_blob(f"osint-jobs/{job_id}/result.json", access="private")
+    except Exception as exc:
+        raise HTTPException(503, "Armazenamento privado indisponível.") from exc
+    if blob is None:
+        return {"job_id": job_id, "status": "pending", "notice": "Tarefa ainda não concluiu ou expirou."}
+    import json
+    return json.loads(blob.body)
+
+
+@app.get("/api/v1/engines/queue/capabilities")
+def engine_queue_capabilities():
+    """Configured does not prove that workers are currently healthy."""
+    return {"configured": os.getenv("OSINT_ENGINE_QUEUE_ENABLED") == "1",
+            "workers_health": "unverified",
+            "admin_auth_required": True,
+            "storage": "private-blob",
+            "notice": "Sem garantias de execução até confirmação de worker, fila e storage."}
 
 
 @app.get("/api/v1/integrations")

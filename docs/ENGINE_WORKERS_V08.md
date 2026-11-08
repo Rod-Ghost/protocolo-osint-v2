@@ -29,3 +29,11 @@ A fila é habilitada somente depois de existir um **usuário administrador auten
 `OSINT_ENGINE_QUEUE_ENABLED` é zero por padrão. `OSINT_WORKER_AUTHORIZED=1` apenas na imagem privada dedicada. Não publicar `BLOB_READ_WRITE_TOKEN`, sessão do usuário ou tokens de fontes. Os resultados são sensíveis e só podem ser lidos depois de verificar o proprietário/escopo do job.
 
 **Estado de validação:** os testes locais com runner simulado cobrem cinco comandos e gravação privada; ainda não são um build Docker completo nem prova de varredura real. O job de CI de supply chain executa o build quando acionado pelo GitHub. Manter a atualização em branch de preview até o build confirmar que as cinco ferramentas iniciam.
+
+
+## Compatibilidade verificada durante builds reais em CI
+
+- SpiderFoot 4.0 possui pinagens antigas incompatíveis com PyYAML moderno em Python >=3.11. A imagem usa Python 3.11 e cria `requirements-upstream.txt` **inalterado**, aplicando alterações apenas à cópia de instalação: PyYAML 6, cryptography 41–45, pyOpenSSL 24–25, NetworkX 2.8–3.2 e lxml 6 para compatibilidade com Maigret. São **adaptações que exigem teste de regressão**: uma instalação bem-sucedida não garante execução do SpiderFoot.
+- OWASP Amass v5.0.1 e subfinder v2.9.0 são compilados com Go 1.26. Go 1.27 ativou mudanças em JSON v2 que quebram módulos antigos, identificadas pelo check de imagem. As versões devem permanecer fixadas até atualização auditada.
+- Imagem de CI é construída e os cinco comandos são verificados com `--help`/`--version`, **sem consulta real**; os cinco motores só estarão operacionais após autorização, conexão de fila e storage privado, lançamento de daemon e teste de coleta com alvos de laboratório.
+- Erros de instalação foram observados na CI e corrigidos iterativamente; não definir `daemons` no arquivo de produção antes da validação do contêiner e do custo/identidade.

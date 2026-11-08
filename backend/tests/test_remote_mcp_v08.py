@@ -34,3 +34,15 @@ def test_mcp_transport_and_existing_api_are_both_reachable():
         executed = client.post('/mcp/',json={'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'osint_classify','arguments':{'value':'example.org'},'_meta':meta}},headers=headers)
         assert executed.status_code == 200, executed.text[:1200]
         assert not executed.json()['result'].get('isError',False)
+
+
+def test_mcp_legacy_client_handshake_for_browser_connectivity():
+    """Current browser UI speaks MCP 2025-06-18; require SDK compatibility."""
+    with TestClient(app) as client:
+        headers={'MCP-Protocol-Version': '2025-06-18', 'Accept': 'application/json, text/event-stream', 'Content-Type': 'application/json'}
+        init=client.post('/mcp/', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'Protocolo browser','version':'0.7.0'}}},headers=headers)
+        assert init.status_code == 200, init.text[:600]
+        assert 'serverInfo' in init.json().get('result',{}), init.text[:600]
+        listed=client.post('/mcp/',json={'jsonrpc':'2.0','id':2,'method':'tools/list','params':{}},headers=headers)
+        assert listed.status_code==200, listed.text[:600]
+        assert any(x['name']=='osint_classify' for x in listed.json().get('result',{}).get('tools',[]))

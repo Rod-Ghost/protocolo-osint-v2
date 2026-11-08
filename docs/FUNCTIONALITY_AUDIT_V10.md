@@ -7,7 +7,7 @@ Esta versão entrega dez operações determinísticas sem rede. Não equivale à
 1 | Correlação de identidades | Parcial: indicadores lexicais, sem confirmar identidades |
 2 | Grafo investigativo | Parcial: relações fornecidas, não persistentes |
 3 | Linha do tempo | Parcial: ordenação de eventos informados |
-4 | IA para hipóteses | Pendente: modelo, validação e fontes |
+4 | IA para hipóteses | Parcial v1.2: prompt metodológico offline + modelo Ollama local/API própria, sem verificação automatizada de fatos |
 5 | Confiabilidade das fontes | Parcial: checklist documental, não veracidade |
 6 | Domínios históricos | Parcial anterior: DNS/CT, histórico pendente |
 7 | E-mails | Parcial: cabeçalhos, sem autenticação criptográfica |
@@ -45,3 +45,7 @@ Autenticação por usuário, isolamento de casos, quotas e banco persistente sã
 ## V1.1 - Limitações dos novos módulos
 
 Custódia e relatórios locais implementados e documentados. A auditoria do banco não corresponde a prova judicial e o cofre browser continua separado do SQLite. Ver docs/CUSTODY_AND_REPORTS_V11.md.
+
+## v1.2 — IA opcional
+
+Roteiro offline (não IA) e conector experimental Ollama/BYOK adicionados sem credenciais ou custos obrigatórios. A API HTTPS depende de CORS e da conta do operador; nenhum teste com modelo remoto foi realizado. O sistema não atribui autoridade a conclusões geradas por modelo. Detalhes em `docs/AI_LOCAL_BYOK_V12.md`.

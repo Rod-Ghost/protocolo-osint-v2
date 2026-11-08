@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0] — 2026-11-08
+
+- Menu IA opcional: checklist metodológico offline como padrão, sem LLM, API ou cobrança.
+- Integração experimental com Ollama local e servidores HTTPS compatíveis com Chat Completions, usando credenciais fornecidas pelo operador por operação.
+- Nenhum token persistido ou entregue à API Vercel. Confirmação explícita antes de transmitir texto; não exporta conteúdo do cofre automaticamente.
+- Limites de prompt, timeout, resposta e políticas de endpoint/CSP; testes de requisição, segurança e regressão.
+- Funcionalidades investigativas existentes preservadas sem dependência de IA paga.
+
+
 ## [1.1.0] - 2026-11-08
 
 - Migração SQLite local aditiva, diário encadeado de integridade de metadados SHA-256 e verificação de divergências.

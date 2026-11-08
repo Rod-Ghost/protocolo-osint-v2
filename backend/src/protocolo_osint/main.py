@@ -21,7 +21,7 @@ from .case_reports import export as export_case_report, ReportNotAvailable
 from .live_lookup import LookupError, PROVIDERS, lookup
 from .local_engines import EngineError, inventory, run
 
-app = FastAPI(title='Protocolo OSINT V2', version='1.1.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='Protocolo OSINT V2', version='1.2.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['GET','POST'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
@@ -50,7 +50,7 @@ async def security_headers(request,call_next):
     response.headers['Referrer-Policy']='no-referrer'
     response.headers['X-Frame-Options']='DENY'
     response.headers['Permissions-Policy']='camera=(), microphone=(), geolocation=()'
-    response.headers['Content-Security-Policy']="default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    response.headers['Content-Security-Policy']="default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self'; connect-src 'self' https: http://127.0.0.1:11434 http://localhost:11434; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     if request.url.path.startswith('/api/'):
         response.headers['Cache-Control']='no-store'
     return response
@@ -97,7 +97,7 @@ class EvidenceCreate(BaseModel):
         return value.strip()
 
 @app.get('/api/v1/health')
-def health():return {'status':'ok','version':'1.1.0','external_requests':0}
+def health():return {'status':'ok','version':'1.2.0','external_requests':0}
 
 @app.post('/api/v1/detect')
 def detect(payload:DetectRequest):

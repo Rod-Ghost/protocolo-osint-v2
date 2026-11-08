@@ -169,7 +169,7 @@ function go(view){
   state.view=view;
   $$('.panel').forEach(n=>n.classList.toggle('is-visible',n.id==='panel-'+view));
   $$('[data-view]').forEach(n=>n.classList.toggle('is-active',n.classList.contains('nav-link')&&n.dataset.view===view));
-  const names={dashboard:'Visão geral',sources:'Explorar fontes',infra:'Consulta pública',images:'Laboratório de imagens',cases:'Meus casos',graph:'Mapa de conexões',integrations:'Integrações & MCP'};
+  const names={dashboard:'Visão geral',sources:'Explorar fontes',infra:'Consulta pública',images:'Laboratório de imagens',cases:'Meus casos',graph:'Mapa de conexões',integrations:'Integrações & MCP',assistant:'IA opcional'};
   $('#breadcrumb-current').textContent=names[view]||view;
   $('.sidebar').classList.remove('open');window.scrollTo(0,0);
   if(view==='sources')renderSources();

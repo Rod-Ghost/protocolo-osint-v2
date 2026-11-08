@@ -32,7 +32,14 @@
   if(legacyFeatures[2])legacyFeatures[2].textContent='Dimensões e hashes; EXIF requer suporte específico';
   const status=(id,text)=>{$('#'+id).textContent=text;};
   const btn=id=>$('#'+id);
-  let ocrText='',reverseEnabled=false,loadedOCR=null;
+  let ocrText='',reverseEnabled=false,loadedOCR=null,operatorCsrf='';
+  const hosted=document.body?.dataset.runtime==='hosted';
+  if(hosted){
+    // The hosted site uses a signed operator session; no manual admin key.
+    for(const element of [node.querySelector('.image-token-label'),btn('image-reverse-token')]){
+      if(element){element.hidden=true;element.style.display='none';}
+    }
+  }
   const file=()=>tools.safeFileType((typeof state!=='undefined'&&state.imageFile)||fileInput.files?.[0]);
   fileInput.addEventListener('change',()=>{
     status('image-local-status','Imagem selecionada. Comparação disponível.');
@@ -109,7 +116,7 @@
     try{await navigator.clipboard.writeText(ocrText);status('image-ocr-status',ocrText+'\n\nTexto copiado para a área de transferência.');}
     catch{status('image-ocr-status',ocrText+'\n\nNão foi possível copiar automaticamente.');}
   });
-  function updateReverseButton(){btn('image-reverse-run').disabled=!reverseEnabled||!btn('image-reverse-consent').checked;}
+  function updateReverseButton(){btn('image-reverse-run').disabled=!reverseEnabled||!btn('image-reverse-consent').checked||(hosted&&!operatorCsrf);}
   btn('image-reverse-consent').addEventListener('change',updateReverseButton);
   async function getReverseConfig(){
     try{
@@ -117,7 +124,16 @@
       if(!response.ok)throw Error(`HTTP ${response.status}`);
       const data=await response.json();
       reverseEnabled=!!data.configured;
-      btn('image-reverse-config').textContent=reverseEnabled?'PROVEDOR CONFIGURADO · REQUER CHAVE':'PROVEDOR NÃO CONFIGURADO · NECESSITA API KEY';
+      if(hosted){
+        try{
+          const response=await fetch('/api/v1/auth/status',{cache:'no-store',credentials:'same-origin'});
+          const session=await response.json();
+          operatorCsrf=session.authenticated===true?String(session.csrf||''):'';
+        }catch{operatorCsrf='';}
+      }
+      btn('image-reverse-config').textContent=reverseEnabled
+        ? (hosted ? (operatorCsrf?'PROVEDOR DISPONÍVEL · ACESSO PELO GITHUB':'ENTRE COM GITHUB PARA CONSULTAR') : 'PROVEDOR CONFIGURADO · REQUER CHAVE')
+        : 'PROVEDOR NÃO CONFIGURADO · BUSCA EXTERNA INDISPONÍVEL';
     }catch{reverseEnabled=false;btn('image-reverse-config').textContent='PROVEDOR INDISPONÍVEL';}
     updateReverseButton();
   }
@@ -133,11 +149,20 @@
       if(selected.size>2_000_000)throw Error('A busca na web aceita imagens de até 2 MB. Reduza o arquivo primeiro.');
       if(!btn('image-reverse-consent').checked||!reverseEnabled)throw Error('Provedor externo desativado ou consentimento ausente.');
       const token=btn('image-reverse-token').value;
-      if(!token)throw Error('Informe a chave de execução administrativa.');
+      if(hosted&&!operatorCsrf)throw Error('Entre com GitHub no painel Motores de pesquisa.');
+      if(!hosted&&!token)throw Error('Informe a chave de execução administrativa.');
       status('image-reverse-status','Enviando imagem com seu consentimento. Consultando índice externo…');
       const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),25000);
       let response;
-      try{response=await fetch('/api/v1/images/reverse',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({mime_type:selected.type,content_base64:await encodeFile(selected)})})}
+      try{
+        const headers={'Content-Type':'application/json'};
+        if(hosted)headers['X-OSINT-CSRF']=operatorCsrf;
+        else headers.Authorization=`Bearer ${token}`;
+        response=await fetch(hosted?'/api/v1/operator/images/reverse':'/api/v1/images/reverse',{
+          method:'POST',signal:controller.signal,credentials:'same-origin',headers,
+          body:JSON.stringify({mime_type:selected.type,content_base64:await encodeFile(selected)})
+        });
+      }
       finally{clearTimeout(timeout)}
       const data=await response.json();
       if(!response.ok)throw Error(typeof data.detail==='string'?data.detail:`HTTP ${response.status}`);

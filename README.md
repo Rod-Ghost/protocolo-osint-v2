@@ -85,3 +85,14 @@ A interface de desenvolvimento inclui o tema próprio **Obsidian Red** (preto, v
 - subfinder, OWASP Amass e SpiderFoot: a imagem experimental `deploy/engines/Dockerfile` é um **plano de implantação**, não um worker de produção. Sua disponibilidade no catálogo não significa execução no site.
 - `apps/web/assets/obsidian.css`, `apps/web/assets/engine-ui.js` e as versões sincronizadas em `public/assets/` preservam os módulos existentes sem substituição destrutiva.
 - Testes: ver `backend/tests/test_engine_hub.py` e `backend/tests/test_hosted_engines.py`; checks de CI devem passar antes do merge. Estado de produção deve ser verificado por URL e logs reais.
+
+
+## V0.6 — Monochrome Signal / laboratório avançado
+
+- **Visual**: paleta neutra preto/branco/cinza com um só vermelho de ação; sem degradês coloridos, ícones emoji ou animações contínuas. Nova camada `monochrome.css` preserva a interface existente.
+- **Similaridade reversa local**: compara dHash de uma imagem selecionada com imagens documentadas em todos os casos do cofre AES-GCM desbloqueado. Não faz buscas na internet nem envia a imagem a terceiros.
+- **OCR**: Tesseract.js 6.0.1, Apache-2.0; motor WebAssembly e idiomas português + inglês baixados **somente depois do clique**. A foto é processada no navegador. A instalação remota/idiomas pode falhar se houver bloqueio de CDN.
+- **Busca reversa na web**: integração opcional com Google Cloud Vision `WEB_DETECTION` documentada em `docs/IMAGE_INTELLIGENCE_V06.md`. Sem chave e token no servidor, o botão fica desabilitado e nenhuma foto é enviada. O Google é um provedor externo pago, não parte do código aberto.
+- **Testes**: `node tests/test-image-core.cjs`, `backend/tests/test_reverse_image.py` e `backend/tests/test_hosted_reverse.py`. Integrações de fornecedor precisam de validação externa; não proclamar OCR ou Web Detection verificados ao vivo sem esse passo.
+
+A implantação pública não expõe o banco SQLite, caso privado nem tokens. O CI deve passar antes da publicação de novas versões. Consulte `docs/DESIGN_SYSTEM_MONO_V06.md`.

@@ -54,3 +54,12 @@ Usar dados sintéticos durante testes. Nunca expor o servidor sem autenticação
 - A suíte histórica foi atualizada: `GET /api/v1/engines` agora deve retornar inventário de leitura e `POST /api/v1/engines/run` deve negar execução não habilitada.
 - Estáticos e CSS não substituem os fluxos legados; o Engine Studio usa CSS `obsidian.css` e JS `engine-ui.js` com verificação de sintaxe no CI.
 - O contêiner experimental é especificação, não execução validada. Antes de habilitar um Worker, revisar licença e dependências transitivas, isolamento de processos, limites/custos e autenticação.
+
+
+## V0.6 — validação de imagem e CSS
+
+- `node tests/test-image-core.cjs`: validação de Hamming, ordenação, correspondência exata e formatos.
+- `pytest backend/tests/test_reverse_image.py`: testes com provedor simulado, destino fixo, autenticação e erros. Teste de envio externo real não executado.
+- `pytest backend/tests/test_hosted_reverse.py`: rota do FastAPI hospedado, funcionalidade bloqueada por padrão e preservação de isolamento do SQLite.
+- `node --check apps/web/assets/{image-core,media-ui}.js` + cópias em `public/`.
+- Chromium: renderização isolada com HTML legado e estilos; o teste completo HTTPS/Google/Tesseract em produção ainda é necessário.

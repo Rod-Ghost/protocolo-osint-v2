@@ -33,3 +33,13 @@ A V2 referencia e pode instalar **Sherlock Project 0.16.2** (licença MIT, [lice
 O contêiner de referência `deploy/engines/Dockerfile` descreve a instalação de **subfinder** (MIT, https://github.com/projectdiscovery/subfinder), **OWASP Amass** (Apache-2.0; componentes podem ter licenças próprias, https://github.com/owasp-amass/amass) e **SpiderFoot** (MIT, https://github.com/smicallef/spiderfoot). Este contêiner ainda não foi construído, auditado ou hospedado em produção. A licença definitiva de **código original** da V2 permanece pendente.
 
 **Retificação do texto anterior:** os adaptadores continuam independentes, mas a API pública agora apresenta inventário e possui uma rota de execução **bloqueada por padrão e protegida por chave no servidor**. A API não permite executar motores sem opt-in explícito. Não devem ser interpretados resultados de terceiros como confirmação de identidade.
+
+
+## Módulos de imagens — V0.6
+
+- **Tesseract.js v6.0.1** — Apache-2.0, https://github.com/naptha/tesseract.js, carregado sob demanda via CDN. Biblioteca, worker, runtime WASM e idiomas têm direitos e avisos próprios que precisam ser preservados na distribuição local futura.
+- **Tesseract OCR** — https://github.com/tesseract-ocr/tesseract, Apache-2.0; motor subjacente usado pelo Tesseract.js.
+- **imagededup** — https://github.com/idealo/imagededup, Apache-2.0; avaliado para serviço futuro, não instalado nesta revisão.
+- **Google Cloud Vision** — serviço externo licenciado, sujeito aos termos e cobrança do Google; integrações usam a API oficial de Web Detection, não código copiado ou scraping.
+
+Não se atribui autoria de dependências externas ao Protocolo OSINT. Os avisos legados e a auditoria de procedência continuam pendentes.

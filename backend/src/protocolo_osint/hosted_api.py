@@ -17,12 +17,14 @@ from .catalog import SOURCES, list_sources, plan
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
+from .image_routes import router as image_router
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
 app = FastAPI(title="Protocolo OSINT V2 — API pública", version=VERSION, docs_url="/api/docs", openapi_url="/api/openapi.json")
+app.include_router(image_router)
 
 
 class SearchRequest(BaseModel):
@@ -44,7 +46,7 @@ async def security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; "
-        "script-src 'self'; connect-src 'self'; object-src 'none'; "
+        "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob:; object-src 'none'; "
         "base-uri 'self'; frame-ancestors 'none'"
     )
     if request.url.path.startswith("/api/"):
@@ -61,7 +63,7 @@ def home():
 
 @app.get("/api/v1/health")
 def health():
-    return {"status": "ok", "version": VERSION, "mode": "hosted-public", "case_storage": False}
+    return {"status": "ok", "version": VERSION, "mode": "hosted-public", "case_storage": False, "image_reverse": "optional"}
 
 
 @app.get("/api/v1/summary")
@@ -147,7 +149,8 @@ def integrations():
         {"name": "DNS-over-HTTPS", "status": "experimental", "detail": "Consultas opcionais A/MX/NS a Cloudflare"},
         {"name": "Certificados CT", "status": "experimental", "detail": "Consulta opcional a crt.sh"},
         {"name": "GitHub público", "status": "experimental", "detail": "Consulta opcional de perfis públicos via REST"},
-        {"name": "Laboratório de imagens", "status": "active", "detail": "Hash SHA-256/dHash no próprio navegador"},
+        {"name": "Laboratório de imagens", "status": "active", "detail": "SHA-256/dHash, comparação entre casos e OCR no navegador sob demanda"},
+        {"name": "Busca reversa na web", "status": "planned", "detail": "Google Cloud Vision: provedor opcional, requer chave/cota/consentimento; ver /api/v1/images/reverse/config"},
         {"name": "Sherlock / Maigret", "status": "experimental", "detail": "Pacotes Python fixados por versão; execução exige autorização e validação real."},
         {"name": "SpiderFoot / subfinder / Amass", "status": "planned", "detail": "Contêiner preparado, mas worker e orquestração ainda não implantados."},
         {"name": "Casos, grafo e evidências", "status": "planned", "detail": "Exigem autenticação e banco por usuário para acesso público"},

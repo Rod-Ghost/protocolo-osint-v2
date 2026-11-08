@@ -23,3 +23,13 @@
 ## [0.1.0] — 2026-11-08
 
 - Fundação inicial com classificação offline e protótipo React/TypeScript preservado.
+
+
+## 0.6.0 — Monochrome Signal / Image Intelligence
+
+- Novo tema minimalista independente em preto/branco/cinza + um vermelho, camada CSS aditiva.
+- Comparação visual local entre casos desbloqueados com SHA-256 e dHash; sem upload de imagens.
+- OCR português/inglês em Tesseract.js carregado após ação explícita.
+- Integração opcional com Google Cloud Vision Web Detection, condicionada a credenciais no servidor e consentimento de envio de imagem.
+- Testes unitários de hash, checagem de bytes MIME, proteção administrativa e provedor HTTP simulado.
+- API pública não armazena fotos nem casos, e não habilita custos externos sem configuração.

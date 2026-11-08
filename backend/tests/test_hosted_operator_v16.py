@@ -91,19 +91,19 @@ def test_oauth_rejects_wrong_state_and_nonoperator(auth_env, monkeypatch):
 def test_operator_workflow_auto_username_and_domain(auth_env, monkeypatch):
     client, session = _signed_in_client(monkeypatch)
     submitted=[]
-    async def fake_submit(engine, target, *, authenticated, operator_id=None):
-        submitted.append((engine,target,authenticated,operator_id))
+    async def fake_submit(engine, target, *, authenticated, operator_id=None, target_kind=None):
+        submitted.append((engine,target,authenticated,operator_id,target_kind))
         return {"engine":engine,"status":"queued","job_id": f"{len(submitted):032x}"}
     monkeypatch.setattr(hosted_api, "queue_submit", fake_submit)
     headers={"Origin": ORIGIN, "X-OSINT-CSRF":session["csrf"]}
     response = client.post("/api/v1/operator/search", headers=headers,json={"value":"publicuser"})
     assert response.status_code == 202
-    assert [x["engine"] for x in response.json()["jobs"]] == ["sherlock","maigret"]
+    assert [x["engine"] for x in response.json()["jobs"]] == ["sherlock","maigret","spiderfoot"]
     assert all(row[2] is True and row[3] == ADMIN_ID for row in submitted)
     response = client.post("/api/v1/operator/search", headers=headers,json={"value":"example.org"})
     assert response.status_code == 202
     assert [x["engine"] for x in response.json()["jobs"]] == ["subfinder","amass","spiderfoot"]
-    assert len(submitted) == 5
+    assert len(submitted) == 6
     response = client.post("/api/v1/operator/search", headers=headers,json={
         "value":"example.org", "include_spiderfoot":False
     })

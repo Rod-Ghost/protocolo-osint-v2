@@ -118,3 +118,8 @@ O inventário na tela de Motores de pesquisa passa a combinar presença local do
 ## v0.9 — Diagnóstico operacional no painel
 
 Em Motores de pesquisa, o diagnóstico da API apresenta fila, autorização, armazenamento privado e daemon em estados separados. A interface só habilita envio de novas tarefas se todos os pré-requisitos detectáveis estiverem presentes, inclusive heartbeat recente. A autenticação continua obrigatória e uma tarefa enviada não prova que fontes externas responderam. O publisher/consumer da Queue compartilha a região gru1 e o namespace de todos os deployments, evitando isolamento acidental entre releases de Function/Daemon. Os cinco motores foram testados como executáveis em Docker CI; a execução real depende de infraestrutura e autenticação na conta Vercel rodrigo11. Nenhum recurso pago foi ativado por este commit.
+
+
+## v1.1 - Auditoria local e relatórios
+
+A tela Casos agora oferece relatório Markdown feito no navegador a partir do cofre desbloqueado, sem enviar os registros à API. O arquivo exportado não é criptografado. No backend LOCAL, novos casos e evidências recebem eventos encadeados SHA-256 e podem ser auditados pela rota /api/v1/cases/{id}/custody. Relatórios em PDF e DOCX são gerados em memória mediante instalação opcional das dependências [reports]. Casos anteriores preservados são classificados legacy_unsealed. A API Vercel continua sem armazenamento de casos. Detalhes em docs/CUSTODY_AND_REPORTS_V11.md.

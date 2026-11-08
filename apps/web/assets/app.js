@@ -228,6 +228,51 @@ async function loadCase(id){
     $$('.case-item').forEach(el=>el.classList.toggle('active',el.dataset.case===id));
     $('#case-detail').innerHTML=`<div class="case-detail-top"><div><div class="eyebrow">INVESTIGAÇÃO ATIVA</div><h2>${esc(c.title)}</h2><p>${esc(c.description||'Sem descrição cadastrada.')}</p></div><a class="button ghost-button" href="/api/v1/cases/${encodeURIComponent(c.id)}/export" download="case-${esc(c.id)}.json"><span data-icon="download"></span> Exportar</a></div><div class="case-detail-subheading"><h3>Registros e referências</h3><span class="subtext">${c.evidence.length} registros</span></div><div>${c.evidence.length?c.evidence.map(e=>`<div class="evidence-item"><span data-icon="file-text"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.kind==='note'?'Nota local':'Referência externa')} · ${new Date(e.created_at).toLocaleString('pt-BR')}</small>${e.url?`<small><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir fonte original ↗</a></small>`:''}${e.note?`<small>${esc(e.note).slice(0,300)}</small>`:''}</div></div>`).join(''):'<div class="subtext">Ainda não há registros. Adicione referências documentadas abaixo.</div>'}</div><form id="evidence-form" class="evidence-form"><div class="eyebrow">ADICIONAR REGISTRO</div><input id="evidence-title" placeholder="Título ou descrição do achado" maxlength="180" minlength="2" required/><input id="evidence-url" type="url" placeholder="URL HTTPS da fonte (opcional)" maxlength="2000"/><textarea id="evidence-note" rows="2" maxlength="5000" placeholder="Observações, contexto e limites"></textarea><button class="button primary-button" type="submit"><span data-icon="plus"></span> Adicionar registro</button><small class="subtext">O hash protege os metadados do registro, não captura a página externa.</small></form>`;
     icons($('#case-detail'));
+    // Case metadata already reside in the browser vault (hosted) or local API.
+    // Generate Markdown on the client without uploading decrypted case content.
+    const reportActions=document.createElement('div');
+    reportActions.className='case-report-actions';
+    const mdButton=document.createElement('button');
+    mdButton.type='button';
+    mdButton.className='button ghost-button';
+    mdButton.textContent='Relatório (.md)';
+    mdButton.addEventListener('click',()=>{
+      try {
+        if(!window.ProtocoloCaseReport)throw Error('Gerador de relatórios indisponível.');
+        if(!window.confirm('O relatório é exportado SEM criptografia. Guardar em local seguro?'))return;
+        const text=window.ProtocoloCaseReport.markdown(c);
+        const blob=new Blob([text],{type:'text/markdown;charset=utf-8'});
+        const url=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=url;link.download='case-'+c.id+'-report.md';
+        document.body.append(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+        toast('Relatório preliminar gerado no navegador.');
+      }catch(error){toast(error.message,true)}
+    });
+    reportActions.append(mdButton);
+    if(!hostedPreview&&!staticPreview){
+      for(const format of ['pdf','docx']){
+        const link=document.createElement('a');
+        link.className='button ghost-button';
+        link.href='/api/v1/cases/'+encodeURIComponent(c.id)+'/report?format='+format;
+        link.download='case-'+c.id+'-report.'+format;
+        link.textContent='Relatório '+format.toUpperCase();
+        reportActions.append(link);
+      }
+      const verify=document.createElement('button');
+      verify.className='button ghost-button';
+      verify.type='button';
+      verify.textContent='Verificar custódia';
+      verify.addEventListener('click',async()=>{
+        try{
+          const data=await api('/api/v1/cases/'+encodeURIComponent(c.id)+'/custody');
+          toast('Integridade dos metadados: '+data.status+' ('+data.events_count+' eventos).',
+                data.valid!==true);
+        }catch(error){toast('Auditoria indisponível: '+error.message,true)}
+      });
+      reportActions.append(verify);
+    }
+    $('#case-detail .case-detail-top').after(reportActions);
     if(vaultReady()){
       const exportLink=$('#case-detail a[download]');
       if(exportLink)exportLink.addEventListener('click',async event=>{

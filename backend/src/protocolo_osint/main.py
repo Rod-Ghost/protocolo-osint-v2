@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import os
+from io import BytesIO
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,14 +17,34 @@ from .catalog import SOURCES, list_sources, plan
 from .detection import detect_type
 from .media import InvalidImage, MAX_BYTES, analyze
 from .store import get_store
+from .case_reports import export as export_case_report, ReportNotAvailable
 from .live_lookup import LookupError, PROVIDERS, lookup
 from .local_engines import EngineError, inventory, run
 
-app = FastAPI(title='Protocolo OSINT V2', version='0.4.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='Protocolo OSINT V2', version='1.1.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['GET','POST'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
 async def security_headers(request,call_next):
+    # Sensitive local SQLite endpoints are never served to network clients.
+    # Hosted Vercel routes are a DIFFERENT app (hosted_api.py).
+    sensitive = (request.url.path.startswith('/api/v1/cases') or
+                 request.url.path.startswith('/api/v1/images/analyze'))
+    if sensitive:
+        peer = request.client.host if request.client else ''
+        if peer not in {'127.0.0.1','::1','localhost','testclient'}:
+            return JSONResponse({'detail':'Dados investigativos disponíveis somente no dispositivo local.'},
+                                status_code=403)
+        origin = request.headers.get('origin')
+        if origin:
+            try:
+                src = urlsplit(origin)
+                permitted = src.scheme in {'http','https'} and src.hostname in {'localhost','127.0.0.1','::1'}
+            except ValueError:
+                permitted = False
+            if not permitted:
+                return JSONResponse({'detail':'Origem não autorizada para dados locais.'},
+                                    status_code=403)
     response=await call_next(request)
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='no-referrer'
@@ -76,7 +97,7 @@ class EvidenceCreate(BaseModel):
         return value.strip()
 
 @app.get('/api/v1/health')
-def health():return {'status':'ok','version':'0.4.0','external_requests':0}
+def health():return {'status':'ok','version':'1.1.0','external_requests':0}
 
 @app.post('/api/v1/detect')
 def detect(payload:DetectRequest):
@@ -153,7 +174,34 @@ def add_evidence(case_id:str,payload:EvidenceCreate):
 def export_case(case_id:str):
     case=get_store().get_case(case_id)
     if not case:raise HTTPException(404,'Caso não encontrado.')
-    return JSONResponse({'format':'protocolo-osint/v2-case-export','case':case,'notice':'Exportação de registros locais; URLs não são cópias forenses preservadas.'},headers={'Content-Disposition':f'attachment; filename="case-{case_id}.json"'})
+    return JSONResponse({'format':'protocolo-osint/v2-case-export',
+                         'case':case,
+                         'custody':get_store().custody(case_id,include_events=True),
+                         'notice':'Exportação de registros locais; URLs não são cópias forenses de páginas ou arquivos.'},
+                        headers={'Content-Disposition':f'attachment; filename="case-{case_id}.json"'})
+
+@app.get('/api/v1/cases/{case_id}/custody')
+def verify_case_custody(case_id:str):
+    result=get_store().custody(case_id,include_events=True)
+    if result is None:raise HTTPException(404,'Caso não encontrado.')
+    return result
+
+@app.get('/api/v1/cases/{case_id}/report')
+def report_case(case_id:str,format:Literal['md','docx','pdf']='md'):
+    case=get_store().get_case(case_id)
+    if case is None:raise HTTPException(404,'Caso não encontrado.')
+    ledger=get_store().custody(case_id,include_events=True)
+    try:
+        payload,mime,extension=export_case_report(case,ledger,format)
+    except ReportNotAvailable as exc:
+        raise HTTPException(503,str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+    return StreamingResponse(BytesIO(payload),media_type=mime,headers={
+        'Content-Disposition':f'attachment; filename="case-{case["id"]}-report.{extension}"',
+        'Cache-Control':'no-store',
+        'X-Content-Type-Options':'nosniff'
+    })
 
 @app.get('/api/v1/cases/{case_id}/graph')
 def graph(case_id:str):

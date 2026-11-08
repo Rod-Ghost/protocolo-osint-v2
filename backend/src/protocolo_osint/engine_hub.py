@@ -49,7 +49,7 @@ ENGINES: tuple[Engine, ...] = (
            'domain', 'subfinder', 'bounded', 'Descoberta PASSIVA de subdomínios publicados', 'pinned container build'),
     Engine('amass', 'OWASP Amass', 'https://github.com/owasp-amass/amass', 'Apache-2.0*',
            'domain', 'amass', 'worker', 'Mapeamento passivo de superfície; pode precisar de serviço e fila', 'pinned container build'),
-    Engine('spiderfoot', 'SpiderFoot', 'https://github.com/smicallef/spiderfoot', 'MIT',
+    Engine('spiderfoot', 'SpiderFoot', 'https://github.com/smicallef/spiderfoot', 'GPL-2.0-only',
            'domain', 'spiderfoot', 'worker', 'Módulos OSINT executados de forma isolada e durável', 'v4.0'),
 )
 

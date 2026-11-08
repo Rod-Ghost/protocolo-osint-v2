@@ -16,7 +16,7 @@ Não foram copiadas árvores inteiras dos cinco projetos ao repositório da V2.
 | amass-main.zip | `a8a81c9043bb40aeeb96f926467306baa17aad7aa7b11476e5e66e450f9abeeb` | Go 1.27.3; branch main; Apache-2.0 | `github.com/owasp-amass/amass/v5/cmd/amass@v5.0.1` |
 | spiderfoot-master.zip | `c6ee64895c9f52da25fb8ebbbd208baf1762a870b22678d09354045a9dadfbbf` | README 4.0, Python 3.7+, MIT | SpiderFoot tag `v4.0`, commit verificado no Dockerfile |
 
-## Compatibilidade de execução
+**Nota de licença por revisão:** o ZIP de `master` identificado nesta tabela e a versão **v4.0 fixada no Dockerfile** não são a mesma revisão. O `LICENSE` e `README.md` oficiais da tag [SpiderFoot v4.0](https://github.com/smicallef/spiderfoot/tree/v4.0) indicam **GPLv2**, não MIT. Verificar e preservar essa licença na distribuição da imagem; a declaração da linha do ZIP é histórica e não comprova a licença do release executado.\n\n## Compatibilidade de execução
 
 - **Sherlock:** o README de pacote documenta o comando `sherlock`,
   `--site`, `--timeout`, `--print-found` e `--no-color`. A V2

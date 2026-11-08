@@ -4,7 +4,7 @@
   'use strict';
   const q = (selector, root=document) => root.querySelector(selector);
   const escapeHTML = (v='') => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const state = {engines:[],selected:'sherlock',loading:false,ran:false};
+  const state = {engines:[],selected:'sherlock',loading:false,ran:false,local:document.body?.dataset.runtime!=='hosted'};
   const names = {
     ready:'EXECUTÁVEL', approval_required:'AGUARDA ACESSO', worker_required:'WORKER', worker_available:'WORKER ATIVO',
     not_installed:'NÃO INSTALADO', unavailable:'SEM CONEXÃO'
@@ -46,7 +46,7 @@
           <select id="engine-choice" name="engine" aria-label="Selecionar motor"><option value="sherlock">Sherlock</option></select>
           <label for="engine-query">Alvo público autorizado</label>
           <input id="engine-query" name="query" maxlength="253" placeholder="Username ou domínio" required spellcheck="false" />
-          <label for="engine-token">Chave de execução (somente administradores)</label>
+          <label for="engine-token" id="engine-token-label">Chave de execução (apenas hospedagem administrada)</label>
           <input id="engine-token" type="password" name="token" autocomplete="off" placeholder="Não armazenada no navegador" />
           <p class="console-copy" id="engine-explain">Selecione um motor para consultar capacidades e restrições.</p>
           <button id="engine-run" class="button primary-button" type="submit" disabled>Executar consulta limitada <span data-icon="arrow-right"></span></button>
@@ -60,6 +60,12 @@
   `;
   const footer = workspace.querySelector('.global-footer');
   if(footer) footer.before(content); else workspace.append(content);
+  // Local workstation: never request or transmit a server administrator token.
+  if(state.local){
+    for(const el of [q('#engine-token-label'),q('#engine-token')]){
+      if(el){el.hidden=true;el.style.display='none';}
+    }
+  }
   if(typeof window.icons === 'function') window.icons(content);
   else if(typeof icons === 'function') icons(content);
 
@@ -126,7 +132,7 @@
       const payload=await response.json();
       if(!Array.isArray(payload.engines))throw new Error('Inventário inválido');
       state.engines=payload.engines;
-      terminal.textContent=`[engine registry] ${state.engines.length} motores cadastrados\n[availability] ${state.engines.filter(e=>e.installed).length} executáveis detectados\n[security] execução exige chave e ativação explícita`;
+      terminal.textContent=`[engine registry] ${state.engines.length} motores cadastrados\n[availability] ${state.engines.filter(e=>e.installed).length} executáveis detectados\n[mode] ${state.local?'local: sem token; motores dependem de instalação e ativação no computador':'Vercel: execução administrativa protegida'}`;
     }catch(error){
       state.engines=fallback;
       statuses.textContent='Offline · API não disponível';
@@ -142,30 +148,84 @@
     describe();
   });
   q('#engine-choice').addEventListener('change',event=>{state.selected=event.target.value;describe()});
+  async function localJobRequest(path,options={}){
+    const ctrl=new AbortController();
+    const timeout=setTimeout(()=>ctrl.abort(),12000);
+    try{
+      const response=await fetch(path,{...options,signal:ctrl.signal,cache:'no-store',credentials:'same-origin'});
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(String(payload.detail||'HTTP '+response.status).slice(0,250));
+      return payload;
+    }finally{clearTimeout(timeout);}
+  }
+  async function runLocalJob(engine,value){
+    const created=await localJobRequest('/api/v1/local-engines/jobs',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({engine:engine.id,value})
+    });
+    if(!/^[a-f0-9]{32}$/.test(created.job_id))throw Error('ID de tarefa local inválido.');
+    const jobId=created.job_id;
+    terminal.textContent='[local] '+engine.title+' · tarefa '+jobId+'\n[queue] '+created.status+'\nNenhuma chave administrativa enviada.';
+    let previous='';
+    // Real statuses from local service; longest worker timeout is 220 seconds.
+    for(let i=0;i<600;i++){
+      await new Promise(resolve=>setTimeout(resolve,1500));
+      const job=await localJobRequest('/api/v1/local-engines/jobs/'+jobId);
+      if(job.status==='queued'||job.status==='running'){
+        if(job.status!==previous){
+          terminal.textContent='[local] '+engine.title+'\n[estado] '+job.status+'\n[tarefa] '+jobId+'\nAguardando resultado da execução no computador.';
+          previous=job.status;
+        }
+        continue;
+      }
+      const result=job.result||{};
+      const records=Array.isArray(result.records)?result.records.slice(0,120):[];
+      const excerpt=String(result.stdout_excerpt||'').slice(0,20000);
+      const output=records.length?records.join('\n'):excerpt;
+      const diagnostic=job.error||result.stderr_excerpt||'';
+      terminal.textContent='['+job.status+'] '+engine.title+'\n[tarefa] '+jobId+
+        '\n[registros] '+records.length+'\n[finalizado] '+(job.finished_at||'não informado')+
+        '\n---\n'+(output||'(motor sem resultados confirmados)')+
+        (diagnostic?'\n[diagnóstico] '+String(diagnostic).slice(0,1800):'')+
+        '\n---\n'+(result.warning||'Resultados externos podem conter falsos positivos.');
+      return;
+    }
+    throw Error('O acompanhamento expirou. O processo local pode continuar; não reenvie a tarefa automaticamente.');
+  }
+
   q('#engine-form').addEventListener('submit',async event=>{
     event.preventDefault();
     const engine=state.engines.find(x=>x.id===state.selected);
     if(!engine?.runnable||state.loading)return;
     const value=q('#engine-query').value.trim();
     const token=q('#engine-token').value;
-    if(!token){terminal.textContent='[auth] Chave de execução ausente. O servidor não aceita consultas sem autorização.';return;}
+    if(!state.local&&!token){terminal.textContent='[auth] Chave administrativa necessária somente na implantação hospedada.';return;}
     if(!value){terminal.textContent='[input] Informe um alvo válido.';return;}
+    if(state.local&&!window.confirm('Executar '+engine.title+' para '+value+' no seu computador? Os módulos podem consultar fontes públicas externas.'))return;
     state.loading=true;consoleButton.disabled=true;
     q('#engine-progress').classList.add('is-active');
-    terminal.textContent=`[queue] Verificando ${engine.title}…\n[scope] 1 alvo, prazo limitado, sem varredura ativa\n[security] autenticação enviada somente ao backend`; // no fake progress
+    terminal.textContent=`[${state.local?'local':'hosted'}] Verificando ${engine.title}…\n[scope] 1 alvo, prazo limitado\n[security] ${state.local?'execução no dispositivo sem token':'autenticação para operação hospedada'}`; // no fake progress
     const started=Date.now();
     try{
+      if(state.local){
+        await runLocalJob(engine,value);
+      }else{
       const ctrl=new AbortController();
-      const timeout=setTimeout(()=>ctrl.abort(),30000);
+      const timeout=setTimeout(()=>ctrl.abort(),state.local?50000:30000);
       let response;
-      try{response=await fetch('/api/v1/engines/run',{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({engine:engine.id,value})})}
+      try{const headers={'Content-Type':'application/json'};if(!state.local)headers.Authorization=`Bearer ${token}`;response=await fetch('/api/v1/engines/run',{method:'POST',signal:ctrl.signal,headers,body:JSON.stringify({engine:engine.id,value})})}
       finally{clearTimeout(timeout)}
       const payload=await response.json();
       if(!response.ok)throw new Error(payload.detail||`HTTP ${response.status}`);
-      const output = Array.isArray(payload.records)?payload.records.slice(0,60).join('\n'):'';
+      const records=Array.isArray(payload.records)?payload.records.slice(0,60):null;
+       const output=records?records.join('\n'):String(payload.stdout||'').slice(0,12000);
       const duration=((Date.now()-started)/1000).toFixed(1);
-      terminal.textContent=`[${payload.status}] ${engine.title} • ${duration}s\n[UTC] ${payload.timestamp||'não informado'}\n[registros] ${(payload.records||[]).length}\n---\n${output || '(nenhum registro confirmado pela saída do motor)'}\n---\n${payload.warning||'Resultados exigem validação independente.'}`;
-    }catch(error){terminal.textContent=`[erro] ${error.name==='AbortError'?'Consulta excedeu 30 segundos.':error.message}\nNenhum resultado foi fabricado.`}
+      const status=payload.status||(payload.returncode===0?'concluído':'finalizado com ressalvas');
+       const count=records?records.length:output.split('\n').filter(Boolean).length;
+       const stderr=state.local&&payload.stderr?'\n[stderr] '+String(payload.stderr).slice(0,1200):'';
+       terminal.textContent=`[${status}] ${engine.title} • ${duration}s\n[registros/linhas] ${count}\n---\n${output || '(nenhum registro confirmado pela saída do motor)'}${stderr}\n---\n${payload.notice||payload.warning||'Resultados exigem validação independente.'}`;
+      }
+    }catch(error){terminal.textContent=`[erro] ${error.name==='AbortError'?'Consulta excedeu o tempo limite.':error.message}\nNenhum resultado foi fabricado.`}
     finally{state.loading=false;q('#engine-progress').classList.remove('is-active');q('#engine-token').value='';describe()}
   });
 

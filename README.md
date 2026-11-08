@@ -37,6 +37,24 @@ Nos sites HTTPS, você pode criar uma senha de **no mínimo 10 caracteres**, des
 
 A plataforma nunca procura automaticamente em todos os sites. A aba **Consulta em tempo real** envia a informação inserida **somente ao provedor explicitamente selecionado**, após clicar em **Consultar fonte**. São solicitações a endpoints fixos; as respostas não são dados pessoais verificados nem prova de identidade. Links do catálogo abrem sites de terceiros manualmente. Use apenas dados e finalidades permitidos por lei e pelos termos das fontes.
 
+### Execução no computador — sem login e sem chave
+
+O modo **local-first** usa o servidor FastAPI em `127.0.0.1` e o
+painel Engine Studio sem solicitar `OSINT_ENGINE_TOKEN`. Para executar
+motores locais, o operador instala os executáveis desejados e define
+`OSINT_ENABLE_LOCAL_ENGINES=1` no processo local (ativação simples,
+**não** credencial). Sherlock, Maigret, subfinder, Amass **e SpiderFoot** contam com
+comandos passivos limitados na **fila local**. SpiderFoot requer a instalação
+da ferramenta oficial, preferencialmente isolada em uma venv. Cada motor é
+apresentado como executável somente se detectado no computador. Nenhum OAuth
+é necessário e a API pública Vercel não libera execução anônima.
+
+A **Vercel** é um ambiente separado de demonstração e homologação.
+Seus motores em fila permanecem restritos a autenticação administrativa,
+pois usam recursos e armazenamento compartilhados. Essas credenciais
+**não** fazem parte do modo local nem devem ser distribuídas aos usuários.
+Veja [guia local-first](docs/LOCAL_FIRST_MODE.md).
+
 ### Desenvolvimento local opcional
 
 Se precisar de OCR, SQLite local, MCP stdio e motores de CLI, use Python 3.11+:

@@ -20,6 +20,7 @@ from .store import get_store
 from .case_reports import export as export_case_report, ReportNotAvailable
 from .live_lookup import LookupError, PROVIDERS, lookup
 from .local_engines import EngineError, inventory, run
+from .local_engine_jobs import LocalQueueFull, get_manager as get_local_engine_jobs
 
 app = FastAPI(title='Protocolo OSINT V2', version='1.2.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['GET','POST'], allow_headers=['Content-Type'])
@@ -30,7 +31,8 @@ async def security_headers(request,call_next):
     # Hosted Vercel routes are a DIFFERENT app (hosted_api.py).
     sensitive = (request.url.path.startswith('/api/v1/cases') or
                  request.url.path.startswith('/api/v1/images/analyze') or
-                 request.url.path == '/api/v1/engines/run')
+                 request.url.path == '/api/v1/engines/run' or
+                 request.url.path.startswith('/api/v1/local-engines/jobs'))
     if sensitive:
         peer = request.client.host if request.client else ''
         if peer not in {'127.0.0.1','::1','localhost','testclient'}:
@@ -76,6 +78,11 @@ class LookupRequest(BaseModel):
 class EngineRunRequest(BaseModel):
     engine: Literal['sherlock','maigret','subfinder','amass']
     value: str = Field(min_length=2,max_length=253)
+
+class LocalJobRequest(BaseModel):
+    engine: Literal['sherlock','maigret','subfinder','amass','spiderfoot']
+    value: str = Field(min_length=2, max_length=253)
+
 
 class CaseCreate(BaseModel):
     title: str = Field(min_length=2,max_length=120)
@@ -156,6 +163,25 @@ def available_engines(): return {'engines': inventory()}
 def execute_local_engine(request: EngineRunRequest):
     try: return run(request.engine,request.value)
     except EngineError as exc: raise HTTPException(422,str(exc)) from exc
+
+@app.post('/api/v1/local-engines/jobs', status_code=202)
+def queue_local_engine_job(request: LocalJobRequest):
+    """No token on loopback; upstream CLIs must be installed and opted in."""
+    try:
+        return get_local_engine_jobs().submit(request.engine, request.value)
+    except LocalQueueFull as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except EngineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get('/api/v1/local-engines/jobs/{job_id}')
+def get_local_engine_job(job_id: str):
+    job = get_local_engine_jobs().get(job_id)
+    if job is None:
+        raise HTTPException(404, 'Tarefa local não encontrada ou expirada.')
+    return job
+
 
 @app.get('/api/v1/cases')
 def cases():return {'items':get_store().list_cases()}

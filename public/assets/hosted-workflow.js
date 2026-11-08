@@ -197,63 +197,6 @@
     if(anchor) anchor.after(pivot);
   }
 
-  // Image investigations preserve the existing browser-local SHA256/dHash/OCR.
-  // Automated reverse-web lookup is optional and only uses Google Vision
-  // when the service is configured and the operator explicitly approves.
-  const imagePanel=$("#panel-images");
-  if(imagePanel){
-    const card=el("section","hosted-image-search");
-    card.append(el("h3","","Pesquisa visual"));
-    card.append(el("p","","Hashes, OCR e similaridade permanecem no navegador. Para buscar imagens iguais na web, um provedor externo é necessário e o envio exige seu consentimento."));
-    const links=el("div","hosted-image-links");
-    for(const [name,url] of [
-      ["Abrir Google Lens (envio manual)","https://lens.google.com/"],
-      ["Abrir TinEye (envio manual)","https://tineye.com/"]
-    ]){
-      const a=el("a","",""+name);a.href=url;a.target="_blank";a.rel="noopener noreferrer";links.append(a);
-    }
-    card.append(links);
-    const reverse=el("button","button","Consultar Google Vision (opcional)");
-    reverse.type="button";reverse.disabled=true;card.append(reverse);
-    const reverseInfo=el("p","hosted-status","Verificando disponibilidade da busca reversa…");
-    const reverseResult=el("pre","hosted-records","");
-    reverseResult.hidden=true;card.append(reverseInfo,reverseResult);
-    const output=$("#image-output",imagePanel);
-    if(output)output.after(card);else imagePanel.append(card);
-    Promise.all([inspectAuth(),request("/api/v1/images/reverse/config").catch(()=>({configured:false}))])
-      .then(([,provider])=>{
-        reverse.disabled=!(state.authenticated&&provider.configured===true);
-        reverseInfo.textContent=provider.configured
-          ?(state.authenticated?"Web Detection disponível com confirmação de envio.":"Entre com GitHub para usar Web Detection.")
-          :"Web Detection não configurada. Utilize OCR local ou os links de envio manual; nenhuma imagem é enviada automaticamente.";
-      }).catch(()=>{reverseInfo.textContent="Consulta externa indisponível.";});
-    reverse.addEventListener("click",async()=>{
-      const file=$("#image-input")?.files?.[0];
-      if(!file){reverseInfo.textContent="Selecione uma imagem primeiro.";return;}
-      if(file.size>2000000||!["image/jpeg","image/png","image/webp"].includes(file.type)){
-        reverseInfo.textContent="Para Web Detection, use JPG/PNG/WebP de até 2 MB.";return;
-      }
-      if(!window.confirm("Enviar esta imagem ao Google Cloud Vision para pesquisa externa? Ela deixará seu dispositivo para análise do provedor."))return;
-      reverse.disabled=true;reverseResult.hidden=true;
-      reverseInfo.textContent="Consultando o provedor de imagens…";
-      try{
-        const encoded=await new Promise((resolve,reject)=>{
-          const reader=new FileReader();
-          reader.onload=()=>resolve(String(reader.result).split(",")[1]);
-          reader.onerror=()=>reject(Error("Falha ao ler a imagem."));
-          reader.readAsDataURL(file);
-        });
-        const result=await request("/api/v1/operator/images/reverse",{
-          method:"POST",headers:{"Content-Type":"application/json","X-OSINT-CSRF":state.csrf},
-          body:JSON.stringify({mime_type:file.type,content_base64:encoded})
-        });
-        reverseResult.textContent=JSON.stringify(result,null,2).slice(0,20000);
-        reverseResult.hidden=false;
-        reverseInfo.textContent="Resposta do provedor recebida. Verifique as correspondências antes de concluir.";
-      }catch(error){reverseInfo.textContent="Pesquisa reversa indisponível: "+error.message;}
-      finally{reverse.disabled=false;}
-    });
-  }else {
-    inspectAuth();
-  }
+  // Existing media-ui.js owns OCR and optional Vision under the same session.
+  inspectAuth();
 })();

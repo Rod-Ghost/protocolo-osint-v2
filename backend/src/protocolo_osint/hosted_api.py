@@ -19,7 +19,7 @@ from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 from .image_routes import router as image_router
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
@@ -46,7 +46,7 @@ async def security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob:; object-src 'none'; "
+        "script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; connect-src 'self' https:; worker-src 'self' blob:; object-src 'none'; "
         "base-uri 'self'; frame-ancestors 'none'"
     )
     if request.url.path.startswith("/api/"):
@@ -154,5 +154,5 @@ def integrations():
         {"name": "Sherlock / Maigret", "status": "experimental", "detail": "Pacotes Python fixados por versão; execução exige autorização e validação real."},
         {"name": "SpiderFoot / subfinder / Amass", "status": "planned", "detail": "Contêiner preparado, mas worker e orquestração ainda não implantados."},
         {"name": "Casos, grafo e evidências", "status": "planned", "detail": "Exigem autenticação e banco por usuário para acesso público"},
-        {"name": "MCP remoto", "status": "planned", "detail": "Acesso remoto requer autenticação e autorização explícitas"},
+        {"name": "MCP remoto", "status": "experimental", "detail": "Cliente browser HTTPS+CORS, token efêmero; sem proxy no servidor"},
     ]}

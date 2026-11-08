@@ -31,6 +31,11 @@ jobs:
       - run: node --check public/assets/image-core.js
       - run: node --check public/assets/media-ui.js
       - run: node tests/test-image-core.cjs
+      - run: node --check apps/web/assets/mcp-client.js
+      - run: node --check apps/web/assets/mcp-ui.js
+      - run: node --check public/assets/mcp-client.js
+      - run: node --check public/assets/mcp-ui.js
+      - run: node tests/test-mcp-client.cjs
   check-provenance:
     runs-on: ubuntu-latest
     steps:

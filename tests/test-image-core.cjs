@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {hamming,compareAcrossCases,safeFileType}=require('../apps/web/assets/image-core.js');
+assert.equal(hamming('0000000000000000','ffffffffffffffff'),64);
+assert.equal(hamming('0000000000000000','0000000000000000'),0);
+assert.throws(()=>hamming('hi','0000000000000000'),/inválido/);
+const data=[{id:'1',title:'Caso A',images:[{title:'mesma',sha256:'a'.repeat(64),dhash:'aaaaaaaaaaaaaaaa'},{title:'semelhante',sha256:'b'.repeat(64),dhash:'aaaaaaaaaaaaaaab'}]},{id:'2',title:'Caso B',images:[{title:'diferente',sha256:'c'.repeat(64),dhash:'5555555555555555'}]}];
+const found=compareAcrossCases('a'.repeat(64),'aaaaaaaaaaaaaaaa',data);
+assert.equal(found.length,2);
+assert.equal(found[0].exact,true);
+assert.equal(found[1].distance,1);
+assert.throws(()=>compareAcrossCases('abc','none',data),/inválidos/);
+assert.doesNotThrow(()=>safeFileType({type:'image/png',size:100}));
+assert.throws(()=>safeFileType({type:'image/svg+xml',size:10}));
+console.log('7 verificações de hashing, índice e formato aprovadas');

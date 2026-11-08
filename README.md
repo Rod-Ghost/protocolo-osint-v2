@@ -108,3 +108,8 @@ A aba Integrações & MCP aceita URL HTTPS, token Bearer opcional, handshake, li
 A API agora pode servir **MCP Streamable HTTP de leitura** no caminho `/mcp/` (SDK oficial `mcp==2.3.0`), com `osint_classify`, `osint_plan_sources` e `osint_list_sources`. Nunca expõe casos, tokens nem comandos remotos. O servidor é independente do cliente MCP customizado já existente. O transporte 2026-07-28 e a compatibilidade legada são gerenciados pelo SDK, mas a conexão live de clientes de terceiros depende dos testes de hospedagem.
 
 Os cinco motores são empacotáveis em um **único container worker**: Sherlock, Maigret, subfinder, OWASP Amass e SpiderFoot. Arquivos: `engine_worker_runtime.py`, `engine_queue.py`, `deploy/engines/Dockerfile.daemon`. Execução em `Vercel Daemons` com fila Vercel Queues e resultados Private Blob é caminho suportado pela arquitetura, mas está **desativado por padrão**, sem criação de instância contínua nem cobrança iniciada. O arquivo `vercel-daemons.example.json` é referência de implantação, não configuração ativa. Um usuário terá de se autenticar para solicitar cada trabalho. Testes de subprocessos e filas usam simulação; build Docker/execução real são verificados na workflow separada de supply chain.
+
+
+## v0.8.1 — Visibilidade de motores reais
+
+O inventário na tela de Motores de pesquisa passa a combinar presença local do executável na API e heartbeat recente do Daemon privado, sem inventar instalação. Ao detectar heartbeat válido (menos de 180s), mostra `WORKER ATIVO` e direciona à fila autenticada; o botão HTTP síncrono permanece desabilitado para o motor externo. Um heartbeat não comprova sucesso de investigação, apenas presença do worker. Sem Daemon/Queue/Private Blob configurados, status permanece pendente.

@@ -19,6 +19,7 @@ from typing import Any
 
 from .detection import DOMAIN
 from .engine_worker_runtime import worker_command, run_bounded_engine
+from .engine_hub import EngineError
 
 USERNAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{1,49}$")
 
@@ -40,10 +41,6 @@ ENGINES = (
     Engine("amass", "amass", "https://github.com/owasp-amass/amass", "Apache-2.0*", "domain", "Enumeração passiva de DNS"),
     Engine("spiderfoot", "spiderfoot", "https://github.com/smicallef/spiderfoot", "GPL-2.0-only", "domain", "Investigação passiva em CLI; requer instalação isolada no computador"),
 )
-
-
-class EngineError(ValueError):
-    pass
 
 
 def spiderfoot_script() -> tuple[str, str] | None:

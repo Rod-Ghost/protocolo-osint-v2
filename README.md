@@ -6,6 +6,23 @@
 
 ![Prévia do dashboard Aurum](docs/assets/aurum-dashboard.png)
 
+## Vercel — pesquisa integrada (V1.6 em revisão)
+
+Um painel único permite pesquisar username (Sherlock e Maigret) ou domínio
+(subfinder, Amass e SpiderFoot), recebendo resultados de tarefas assíncronas.
+O visitante continua usando catálogo, análise local de imagem e cofre
+criptografado **sem conta**. Para executar os motores hospedados, o operador
+faz login no GitHub uma vez; não digita token administrativo. A instalação
+local continua independente e não é necessário Cloudflare, Supabase ou
+sincronização entre computadores.
+
+**Atenção:** a PR da V1.6 ainda não habilita o serviço em produção. Antes de
+usar os motores hospedados, o mantenedor deve configurar as credenciais
+da GitHub OAuth App na Vercel e homologar o Daemon, a fila e os resultados.
+Busca reversa automática de imagens depende de Google Cloud Vision
+configurado; OCR e Lens/TinEye manual não precisam dessa API.
+
+Documentação: [fluxo hospedado V1.6](docs/HOSTED_WORKFLOW_V16.md).
 ## Comece no navegador — sem instalar Python ou Git
 
 A interface da V2 está preparada para a Vercel, com os arquivos estáticos em `public/` e o backend público **FastAPI** em `app.py`.

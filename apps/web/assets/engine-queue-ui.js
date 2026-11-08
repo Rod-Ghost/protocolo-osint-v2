@@ -1,6 +1,8 @@
 /* Protocolo OSINT · Admin-only job interface. No credentials are stored. */
 (()=>{
 'use strict';
+// The hosted login workbench supersedes the legacy manual-admin-token form.
+if(window.ProtocoloHostedWorkflow) return;
 const panel=document.querySelector('#panel-engines');
 if(!panel)return;
 const card=document.createElement('section');card.className='engine-queue-card';card.setAttribute('aria-label','Fila de motores OSINT');

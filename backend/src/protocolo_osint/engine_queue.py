@@ -54,7 +54,7 @@ def validate_job(engine: str, target: str) -> dict:
     return {"engine": engine, "target": _validate(spec, target)}
 
 
-async def submit(engine: str, target: str, *, authenticated: bool = False, sender=None) -> dict:
+async def submit(engine: str, target: str, *, authenticated: bool = False, sender=None, operator_id: int | None = None) -> dict:
     """Submit a single target after a *server-verified* admin session."""
     if not _authorized(authenticated):
         raise EngineError("Fila desligada ou usuário não autenticado.")
@@ -63,6 +63,10 @@ async def submit(engine: str, target: str, *, authenticated: bool = False, sende
     if sender is None:
         sender = _queue_client().send
     message = {"job_id": job_id, **clean, "issued_at": datetime.now(timezone.utc).isoformat()}
+    if operator_id is not None:
+        if not isinstance(operator_id, int) or operator_id <= 0:
+            raise EngineError("Identificador do operador inválido.")
+        message["operator_id"] = operator_id
     await sender(TOPIC, message, idempotency_key=job_id, retention=timedelta(hours=1))
     return {"job_id": job_id, "status": "queued", "engine": engine, "notice": "Enfileirado; conclusão depende da disponibilidade real do daemon."}
 
@@ -100,6 +104,8 @@ async def process_job(payload: dict, *, engine_runner=run_worker_engine,
     except EngineError as exc:
         output = {"status": "failed", "engine": item["engine"], "error": str(exc)[:180], "records": []}
     record = {"job_id": job_id, "completed_at": datetime.now(timezone.utc).isoformat(), **output}
+    if isinstance(payload.get("operator_id"), int) and payload["operator_id"] > 0:
+        record["operator_id"] = payload["operator_id"]
     data = json.dumps(record, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     if len(data) > 120000:
         record["stdout_excerpt"] = "[saída reduzida por limite de persistência]"

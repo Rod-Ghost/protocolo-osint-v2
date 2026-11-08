@@ -197,13 +197,32 @@ async def get_engine_job(job_id: str, authorization: str | None = Header(default
 
 
 @app.get("/api/v1/engines/queue/capabilities")
-def engine_queue_capabilities():
-    """Configured does not prove that workers are currently healthy."""
-    return {"configured": os.getenv("OSINT_ENGINE_QUEUE_ENABLED") == "1",
-            "workers_health": "unverified",
-            "admin_auth_required": True,
-            "storage": "private-blob",
-            "notice": "Sem garantias de execução até confirmação de worker, fila e storage."}
+async def engine_queue_capabilities():
+    """Only a recent PRIVATE Blob heartbeat proves a worker has checked in."""
+    configured = os.getenv("OSINT_ENGINE_QUEUE_ENABLED") == "1"
+    result = {"configured": configured, "workers_health": "unverified",
+              "admin_auth_required": True, "storage": "private-blob",
+              "notice": "Instalação não prova execução; verifique heartbeat do daemon."}
+    if not configured:
+        return result
+    try:
+        from vercel.blob import get_blob
+        from datetime import datetime, timezone
+        import json
+        item = await get_blob("osint-health/worker.json", access="private")
+        data = json.loads(item.body)
+        observed = datetime.fromisoformat(data["observed_at"])
+        seconds = (datetime.now(timezone.utc) - observed).total_seconds()
+        if 0 <= seconds <= 180:
+            result["workers_health"] = "heartbeat-recent"
+            result["last_seen_utc"] = observed.isoformat()
+            result["engines"] = [
+                {"engine": str(x.get("engine", ""))[:32], "installed": x.get("installed") is True}
+                for x in data.get("engines", [])[:5]
+            ]
+    except Exception:
+        pass  # A failed health probe never asserts that engines are ready.
+    return result
 
 
 @app.get("/api/v1/integrations")

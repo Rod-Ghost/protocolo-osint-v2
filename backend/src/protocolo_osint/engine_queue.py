@@ -10,10 +10,11 @@ import json
 import os
 import re
 import uuid
+import time
 from datetime import datetime, timedelta, timezone
 
 from .engine_hub import ENGINES, EngineError, _validate
-from .engine_worker_runtime import run_worker_engine
+from .engine_worker_runtime import run_worker_engine, inventory as worker_inventory
 
 TOPIC = "protocolo-osint-engine-v1"
 GROUP = "protocolo-engine-workers"
@@ -70,6 +71,18 @@ async def process_job(payload: dict, *, engine_runner=run_worker_engine, blob_wr
     return record
 
 
+async def publish_heartbeat(*, writer=None):
+    """Publish actual executable presence; no names, targets or private data."""
+    payload = {"observed_at": datetime.now(timezone.utc).isoformat(), "engines": worker_inventory()}
+    if writer is None:
+        from vercel.blob import put_blob
+        writer = put_blob
+    await writer("osint-health/worker.json",
+                 json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+                 access="private", content_type="application/json", allow_overwrite=True)
+    return payload
+
+
 async def worker_loop(*, poller=None, sleeper=asyncio.sleep):
     """Long-lived pull worker. Do not run inside request/response Functions."""
     if os.environ.get("OSINT_WORKER_AUTHORIZED") != "1":
@@ -78,7 +91,11 @@ async def worker_loop(*, poller=None, sleeper=asyncio.sleep):
         from vercel.queue import poll
         poller = poll
     os.environ.setdefault("VERCEL_REGION", "gru1")
+    last_heartbeat = 0.0
     while True:
+        if time.monotonic() - last_heartbeat >= 60:
+            await publish_heartbeat()
+            last_heartbeat = time.monotonic()
         async for delivery in poller(topic=TOPIC, consumer_group=GROUP, limit=1):
             async with delivery as message:
                 await process_job(message.payload)

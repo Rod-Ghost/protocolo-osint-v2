@@ -22,7 +22,7 @@ async function inspect(){
  try{
   const data=await request('/api/v1/engines/queue/capabilities');
   config=data.configured===true;
-  $('#queue-availability').textContent=config?'Fila configurada · worker não verificado':'Fila indisponível';
+  $('#queue-availability').textContent=!config?'Fila indisponível':data.workers_health==='heartbeat-recent'?'Worker detectado · teste de consulta pendente':'Fila configurada · worker não verificado';
   $('#queue-note').textContent=config?'O envio exige autenticação administrativa. Uma tarefa enfileirada não comprova que um worker está ativo.':'A fila/worker não estão ativados nesta hospedagem. A interface permanece em modo informativo.';
   $('#queue-send').disabled=!config;
  }catch(e){$('#queue-availability').textContent='Estado indisponível';$('#queue-send').disabled=true;showStatus('Não foi possível consultar a fila: '+e.message);}

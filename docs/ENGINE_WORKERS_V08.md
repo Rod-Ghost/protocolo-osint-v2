@@ -37,3 +37,8 @@ A fila é habilitada somente depois de existir um **usuário administrador auten
 - OWASP Amass v5.0.1 e subfinder v2.9.0 são compilados com Go 1.26. Go 1.27 ativou mudanças em JSON v2 que quebram módulos antigos, identificadas pelo check de imagem. As versões devem permanecer fixadas até atualização auditada.
 - Imagem de CI é construída e os cinco comandos são verificados com `--help`/`--version`, **sem consulta real**; os cinco motores só estarão operacionais após autorização, conexão de fila e storage privado, lançamento de daemon e teste de coleta com alvos de laboratório.
 - Erros de instalação foram observados na CI e corrigidos iterativamente; não definir `daemons` no arquivo de produção antes da validação do contêiner e do custo/identidade.
+
+
+## Heartbeat verificável do daemon
+
+O Daemon registra a cada 60 segundos uma evidência privada de presença dos cinco executáveis (sem alvos, resultados ou dados pessoais) em `osint-health/worker.json`. O endpoint `GET /api/v1/engines/queue/capabilities` marca `heartbeat-recent` apenas quando a última atualização tem menos de 180 segundos; sem fila ou acesso ao Blob, mantém `unverified`. Esse sinal prova presença recente do processo, **não** qualidade de resultados, execução externa, proteção contra abuso ou saúde de todas as fontes OSINT. O heartbeat usa requisições periódicas ao armazenamento (custos sujeitos à política do provedor).

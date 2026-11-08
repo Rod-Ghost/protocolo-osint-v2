@@ -52,3 +52,24 @@ def test_queue_status_validates_job_id_before_storage(monkeypatch):
     assert response.status_code in (404, 422)
     response = client.get("/api/v1/engines/jobs/invalid", headers={"Authorization": "Bearer "+secret})
     assert response.status_code == 422
+
+
+def test_queue_heartbeat_unconfigured_never_claims_worker(monkeypatch):
+    monkeypatch.delenv("OSINT_ENGINE_QUEUE_ENABLED", raising=False)
+    result = client.get("/api/v1/engines/queue/capabilities").json()
+    assert result["configured"] is False
+    assert result["workers_health"] == "unverified"
+
+
+def test_worker_heartbeat_records_actual_binary_inventory(monkeypatch):
+    from protocolo_osint import engine_queue
+    async def fake_writer(path, body, **kwargs):
+        assert path == "osint-health/worker.json"
+        assert kwargs["access"] == "private" and kwargs["allow_overwrite"] is True
+        import json
+        data = json.loads(body)
+        assert len(data["engines"]) == 5
+    monkeypatch.setattr(engine_queue, "worker_inventory", lambda: [{"engine": e.id, "installed": False} for e in engine_queue.ENGINES])
+    import asyncio
+    result = asyncio.run(engine_queue.publish_heartbeat(writer=fake_writer))
+    assert len(result["engines"]) == 5

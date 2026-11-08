@@ -7,7 +7,7 @@ RUN mkdir -p /opt/bin && \
     go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.9.0 && \
     go install github.com/owasp-amass/amass/v5/cmd/amass@v5.0.1
 
-FROM python:3.12-slim
+FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     PYTHONPATH=/workspace/backend/src HOME=/tmp \
     OSINT_WORKER_AUTHORIZED=1 VERCEL_REGION=gru1
@@ -20,6 +20,12 @@ RUN python -m pip install --no-cache-dir -r /workspace/requirements.txt \
     'vercel-queue==0.10.0' 'vercel-blob==0.5.1'
 RUN git clone --depth 1 --branch v4.0 https://github.com/smicallef/spiderfoot.git /opt/spiderfoot && \
     cp /opt/spiderfoot/LICENSE /opt/spiderfoot/LICENSE-UPSTREAM.txt && \
+    cp /opt/spiderfoot/requirements.txt /opt/spiderfoot/requirements-upstream.txt && \
+    sed -i -e 's/pyyaml>=5.4.1,<6/pyyaml>=6.0.2,<7/' \
+           -e 's/cryptography>=3.4.8,<4/cryptography>=41,<46/' \
+           -e 's/pyOpenSSL>=21.0.0,<22/pyOpenSSL>=24,<26/' \
+           -e 's/networkx>=2.6.3,<2.7/networkx>=2.8,<3.3/' \
+           /opt/spiderfoot/requirements.txt && \
     python -m pip install --no-cache-dir -r /opt/spiderfoot/requirements.txt
 RUN printf '#!/bin/sh\nexec python /opt/spiderfoot/sf.py "$@"\n' > /usr/local/bin/spiderfoot && \
     chmod 755 /usr/local/bin/spiderfoot

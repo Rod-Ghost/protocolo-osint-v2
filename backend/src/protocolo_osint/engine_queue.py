@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from .engine_hub import ENGINES, EngineError, _validate
 from .engine_worker_runtime import run_worker_engine, inventory as worker_inventory
+from .target_routing import validate_target, SPIDERFOOT_KINDS
 
 TOPIC = "protocolo-osint-engine-v1"
 GROUP = "protocolo-engine-workers"
@@ -47,18 +48,26 @@ def _authorized(authenticated: bool) -> bool:
     return authenticated is True and os.environ.get("OSINT_ENGINE_QUEUE_ENABLED") == "1"
 
 
-def validate_job(engine: str, target: str) -> dict:
+def validate_job(engine: str, target: str, *, target_kind: str | None = None) -> dict:
     spec = next((e for e in ENGINES if e.id == engine), None)
     if not spec:
         raise EngineError("Motor inexistente.")
+    if engine == "spiderfoot" and target_kind is not None:
+        resolved = validate_target(target, target_kind)
+        if resolved.engine_kind not in SPIDERFOOT_KINDS:
+            raise EngineError("Tipo não suportado pelo SpiderFoot.")
+        return {"engine": engine, "target": resolved.normalized,
+                "target_kind": resolved.engine_kind}
+    if target_kind is not None:
+        raise EngineError("Esse motor não suporta o tipo solicitado.")
     return {"engine": engine, "target": _validate(spec, target)}
 
 
-async def submit(engine: str, target: str, *, authenticated: bool = False, sender=None, operator_id: int | None = None) -> dict:
+async def submit(engine: str, target: str, *, authenticated: bool = False, sender=None, operator_id: int | None = None, target_kind: str | None = None) -> dict:
     """Submit a single target after a *server-verified* admin session."""
     if not _authorized(authenticated):
         raise EngineError("Fila desligada ou usuário não autenticado.")
-    clean = validate_job(engine, target)
+    clean = validate_job(engine, target, target_kind=target_kind)
     job_id = uuid.uuid4().hex
     if sender is None:
         sender = _queue_client().send
@@ -89,7 +98,8 @@ async def process_job(payload: dict, *, engine_runner=run_worker_engine,
     """Process one validated queue delivery; persist result in PRIVATE Blob."""
     if not isinstance(payload, dict) or not UUID_RE.fullmatch(str(payload.get("job_id", ""))):
         raise EngineError("Identificador de tarefa inválido.")
-    item = validate_job(str(payload.get("engine", "")), str(payload.get("target", "")))
+    item = validate_job(str(payload.get("engine", "")), str(payload.get("target", "")),
+                        target_kind=payload.get("target_kind"))
     job_id = payload["job_id"]
     # An acknowledged result must not be collected again on queue redelivery.
     # When a test supplies an in-memory writer, skip the live Blob read unless
@@ -100,10 +110,18 @@ async def process_job(payload: dict, *, engine_runner=run_worker_engine,
         if previous is not None:
             return previous
     try:
-        output = await asyncio.to_thread(engine_runner, item["engine"], item["target"])
+        if "target_kind" in item:
+            output = await asyncio.to_thread(
+                engine_runner, item["engine"], item["target"],
+                target_kind=item["target_kind"]
+            )
+        else:
+            output = await asyncio.to_thread(engine_runner, item["engine"], item["target"])
     except EngineError as exc:
         output = {"status": "failed", "engine": item["engine"], "error": str(exc)[:180], "records": []}
     record = {"job_id": job_id, "completed_at": datetime.now(timezone.utc).isoformat(), **output}
+    if "target_kind" in item:
+        record["target_kind"] = item["target_kind"]
     if isinstance(payload.get("operator_id"), int) and payload["operator_id"] > 0:
         record["operator_id"] = payload["operator_id"]
     data = json.dumps(record, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

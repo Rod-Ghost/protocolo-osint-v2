@@ -35,7 +35,6 @@ def test_mcp_transport_and_existing_api_are_both_reachable():
         assert executed.status_code == 200, executed.text[:1200]
         assert not executed.json()['result'].get('isError',False)
         # Same lifespan/session-manager instance: SDK only permits one startup per app.
-    with TestClient(app) as client:
         headers={'MCP-Protocol-Version': '2025-06-18', 'Accept': 'application/json, text/event-stream', 'Content-Type': 'application/json'}
         init=client.post('/mcp/', json={'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'Protocolo browser','version':'0.7.0'}}},headers=headers)
         assert init.status_code == 200, init.text[:600]

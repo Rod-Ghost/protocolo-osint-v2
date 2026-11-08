@@ -23,6 +23,7 @@ from .image_routes import router as image_router, ReverseRequest
 from .reverse_image import availability as reverse_availability, search as reverse_search, ReverseImageError
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE, HEARTBEAT_FRESHNESS_SECONDS
+from .target_routing import validate_target, select_engines
 from .operator_auth import (
     status as operator_status, login as operator_login, callback as operator_callback,
     logout as operator_logout, require_operator
@@ -330,28 +331,26 @@ def github_operator_logout(request: Request):
 class OperatorSearchRequest(BaseModel):
     value: str = Field(min_length=2, max_length=253)
     engine: Literal["auto", "sherlock", "maigret", "subfinder", "amass", "spiderfoot"] = "auto"
+    target_kind: Literal["auto", "username", "domain", "url", "email", "ip",
+                         "cidr", "asn", "phone", "name", "bitcoin"] = "auto"
     include_spiderfoot: bool = True
 
 
-def _search_motors(value: str, engine: str, include_spiderfoot: bool) -> tuple[str, list[str]]:
-    """A plain username/domain selects only compatible passive CLI adapters."""
+def _search_motors(value: str, engine: str, include_spiderfoot: bool,
+                   target_kind: str = "auto"):
+    """Select only real passive capabilities, with an explicit type override."""
     from .engine_queue import validate_job
-    kind = detect_type(value)
-    if engine == "auto":
-        if kind == "username_candidate":
-            chosen = ["sherlock", "maigret"]
-        elif kind == "domain":
-            chosen = ["subfinder", "amass"] + (["spiderfoot"] if include_spiderfoot else [])
-        else:
-            raise HTTPException(422, "A pesquisa automática aceita um username ou domínio público; imagens usam o laboratório visual.")
-    else:
-        chosen = [engine]
-    for item in chosen:
-        try:
-            validate_job(item, value)
-        except EngineError as exc:
-            raise HTTPException(422, str(exc)) from exc
-    return kind, chosen
+    try:
+        target = validate_target(value, target_kind)
+        chosen = select_engines(target, engine, include_spiderfoot)
+        for item in chosen:
+            validate_job(item, target.normalized,
+                         target_kind=target.engine_kind
+                         if item == "spiderfoot" and target.engine_kind != "domain"
+                         else None)
+    except EngineError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return target, chosen
 
 
 @app.post("/api/v1/operator/search", status_code=202)
@@ -360,19 +359,25 @@ async def operator_search(request: Request, payload: OperatorSearchRequest):
     operator = require_operator(request, csrf=True)
     if os.getenv("OSINT_ENGINE_QUEUE_ENABLED") != "1":
         raise HTTPException(503, "Fila de motores hospedados indisponível.")
-    kind, motors = _search_motors(payload.value, payload.engine, payload.include_spiderfoot)
+    target, motors = _search_motors(payload.value, payload.engine,
+                                    payload.include_spiderfoot, payload.target_kind)
     jobs, errors = [], []
     for motor in motors:
         try:
-            job = await queue_submit(motor, payload.value, authenticated=True,
-                                     operator_id=operator["uid"])
+            kwargs = {"authenticated": True, "operator_id": operator["uid"]}
+            # The queued worker needs an explicit seed kind for SpiderFoot.
+            # Existing jobs and the other four CLI adapters remain compatible.
+            if motor == "spiderfoot" and target.engine_kind != "domain":
+                kwargs["target_kind"] = target.engine_kind
+            job = await queue_submit(motor, target.normalized, **kwargs)
             jobs.append({"engine": motor, "job_id": job["job_id"], "status": job["status"]})
         except Exception:
             errors.append({"engine": motor, "error": "Não foi possível enfileirar este motor."})
     if not jobs:
         raise HTTPException(503, "Nenhuma tarefa foi aceita pela fila privada.")
     return {
-        "kind": kind, "value": payload.value.strip(), "jobs": jobs,
+        "kind": target.kind, "value": payload.value.strip(),
+        "normalized_target": target.normalized, "jobs": jobs,
         "errors": errors, "records_verified": False,
         "notice": "Tarefas submetidas ao Daemon. Resultados requerem consulta e validação de fontes; não há confirmação de identidade."
     }

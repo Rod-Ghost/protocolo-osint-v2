@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from .engine_hub import EngineError, ENGINES, _validate
+from .target_routing import validate_target, SPIDERFOOT_KINDS
 
 MAX_SECONDS = {"sherlock": 70, "maigret": 90, "subfinder": 65, "amass": 200, "spiderfoot": 220}
 MAX_STDOUT = 30000
@@ -22,12 +23,21 @@ MAX_STDERR = 2000
 MAX_RESULTS = 120
 
 
-def worker_command(engine_id: str, value: str, which=shutil.which) -> list[str]:
+def worker_command(engine_id: str, value: str, which=shutil.which, *, target_kind: str | None = None) -> list[str]:
     """Build a passive-only command with fixed flags, never shell interpolation."""
     spec = next((x for x in ENGINES if x.id == engine_id), None)
     if spec is None:
         raise EngineError("Motor não reconhecido.")
-    target = _validate(spec, value)
+    if engine_id == "spiderfoot" and target_kind is not None:
+        resolved = validate_target(value, target_kind)
+        if resolved.engine_kind not in SPIDERFOOT_KINDS:
+            raise EngineError("Tipo de alvo incompatível com SpiderFoot.")
+        target = resolved.normalized
+        target_kind = resolved.engine_kind
+    else:
+        if target_kind is not None:
+            raise EngineError("Tipo de alvo extra disponível apenas para SpiderFoot.")
+        target = _validate(spec, value)
     binary = which(spec.executable)
     if binary is None:
         raise EngineError(f"{spec.title} não instalado neste worker.")
@@ -36,20 +46,24 @@ def worker_command(engine_id: str, value: str, which=shutil.which) -> list[str]:
     if engine_id == "maigret":
         return [binary, target, "--no-recursion", "--no-autoupdate", "--top-sites", "20", "--timeout", "5", "--max-connections", "4"]
     if engine_id == "subfinder":
-        return [binary, "-d", target, "-silent", "-timeout", "5", "-max-time", "1", "-max-results", "40"]
+        # subfinder v2.9.0 supports rate limiting, but has no -max-results flag.
+        return [binary, "-d", target, "-silent", "-timeout", "5", "-max-time", "1", "-rl", "5"]
     if engine_id == "amass":
         return [binary, "enum", "-passive", "-d", target, "-timeout", "3", "-nocolor", "-silent"]
     if engine_id == "spiderfoot":
         # Stable SpiderFoot CLI supports a passive-only module set and JSON output.
-        return [binary, "-s", target, "-u", "passive", "-o", "json", "-max-threads", "2", "-q"]
+        # sf.py auto-detects dotted handles as INTERNET_NAME unless literally
+        # quoted in argv; quoted seeds become USERNAME/HUMAN_NAME in v4.0.
+        seed = '"' + target + '"' if target_kind in {"username", "name"} else target
+        return [binary, "-s", seed, "-u", "passive", "-o", "json", "-max-threads", "2", "-q"]
     raise EngineError("Motor não implementado.")
 
 
-def run_worker_engine(engine_id: str, value: str, *, runner: Callable = subprocess.run, which=shutil.which) -> dict:
+def run_worker_engine(engine_id: str, value: str, *, runner: Callable = subprocess.run, which=shutil.which, target_kind: str | None = None) -> dict:
     """Run only a named CLI, in a temporary home, bounded by hard time limits."""
     if os.getenv("OSINT_WORKER_AUTHORIZED") != "1":
         raise EngineError("Worker não autorizado para executar consultas.")
-    cmd = worker_command(engine_id, value, which=which)
+    cmd = worker_command(engine_id, value, which=which, target_kind=target_kind)
     with tempfile.TemporaryDirectory(prefix="protocolo-engine-") as temp:
         try:
             result = runner(

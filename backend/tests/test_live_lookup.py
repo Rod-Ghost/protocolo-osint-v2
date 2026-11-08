@@ -1,0 +1,68 @@
+"""No external network requests in tests. Provider responses are controlled."""
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
+from protocolo_osint.live_lookup import LookupError, lookup
+from protocolo_osint.hosted_api import app
+
+
+def mocked_client(handler):
+    return httpx.Client(transport=httpx.MockTransport(handler), trust_env=False)
+
+
+def test_dns_three_fixed_requests_and_provenance():
+    captured = []
+    def handler(request):
+        captured.append(str(request.url))
+        assert request.url.host == 'cloudflare-dns.com'
+        return httpx.Response(200, json={'Answer':[{'name':'example.org','type':1,'TTL':180,'data':'192.0.2.2'}]})
+    with mocked_client(handler) as client:
+        r=lookup('example.org','dns',client=client)
+    assert len(captured)==3
+    assert r['count']==3
+    assert r['status']=='observed'
+    assert r['source_url']=='https://cloudflare-dns.com/dns-query'
+    assert r['verified'] is False
+
+
+def test_github_profile_and_missing_user():
+    def respond(request):
+        assert request.url.host=='api.github.com'
+        return httpx.Response(200,json={'login':'octocat','html_url':'https://github.com/octocat','public_repos':8,'type':'User'})
+    with mocked_client(respond) as client:
+        result=lookup('@octocat','github',client=client)
+    assert result['items'][0]['login']=='octocat'
+    with mocked_client(lambda request: httpx.Response(404)) as client:
+        missing=lookup('notarealuser','github',client=client)
+    assert missing['status']=='no_result' and missing['count']==0
+
+
+def test_certificates_deduplicated_capped():
+    with mocked_client(lambda request:httpx.Response(200,json=[{'name_value':'a.example.org','issuer_name':'CA'}]*3)) as client:
+        result=lookup('example.org','certificates',client=client)
+    assert result['count']==1
+
+
+@pytest.mark.parametrize('query,provider', [('http://127.0.0.1','dns'),('192.168.0.1','dns'),('example.org;rm -rf /','certificates'),('--help','github')])
+def test_invalid_inputs_rejected_without_network(query,provider):
+    with pytest.raises(LookupError):
+        lookup(query,provider)
+
+
+def test_upstream_response_limit():
+    with mocked_client(lambda _:httpx.Response(200,content=b'x'*270001)) as client:
+        with pytest.raises(LookupError,match='limite'):
+            lookup('example.org','certificates',client=client)
+
+
+def test_public_api_separation_and_security():
+    app_client=TestClient(app)
+    assert app_client.get('/api/v1/health').json()['status']=='ok'
+    assert app_client.get('/api/v1/lookup/providers').status_code==200
+    assert app_client.get('/api/v1/cases').status_code==404
+    assert app_client.post('/api/v1/cases',json={'title':'do not store'}).status_code==404
+    assert app_client.get('/api/v1/engines').status_code==404
+    assert app_client.post('/api/v1/search/plan',json={'value':'example.org'}).json()['external_requests']==0
+    assert app_client.post('/api/v1/lookup',json={'value':'https://example.org','provider':'dns'}).status_code in (422,502)
+    assert app_client.get('/api/v1/health').headers['x-content-type-options']=='nosniff'

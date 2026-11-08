@@ -1,3 +1,75 @@
-# Protocolo OSINT V2
+# Protocolo OSINT V2 — Intelligence Workspace
 
-Fundação privada em desenvolvimento. A implementação completa será adicionada na branch `develop` após testes locais. Consulte `docs/IP_PROVENANCE.md` antes de qualquer publicação pública.
+**V2 v0.4.0 · Interface Aurum UI · Pesquisa em fontes abertas com origem e contexto.**
+
+> Esta versão contém código novo, separado da base HTML legada enquanto a titularidade e a licença do material original são revisadas. O repositório pode estar visível publicamente, mas **a licença open source do código próprio ainda não foi definida**. Não confundir visibilidade pública com concessão de direitos de reutilização. Consulte [procedência](docs/IP_PROVENANCE.md) e [critério de publicação](docs/RELEASE_GATE.md).
+
+![Prévia do dashboard Aurum](docs/assets/aurum-dashboard.png)
+
+## Comece no navegador — sem instalar Python ou Git
+
+A interface da V2 está preparada para a Vercel, com os arquivos estáticos em `public/` e o backend público **FastAPI** em `app.py`.
+
+A hospedagem depende de o projeto Vercel estar conectado ao repositório correto e de um deployment concluído. Consulte [GUIA VERCEL](docs/HOSTING_VERCEL.md). **O código armazenado no GitHub não comprova que um domínio de produção já tenha sido atualizado.**
+
+### Matriz de funcionalidades
+
+| Capacidade | No navegador/na Vercel | Local/worker dedicado | Validação nesta revisão |
+|---|---|---|---|
+| Dashboard compacto Aurum e temas | disponível | disponível | Chromium renderizado com mocks, desktop e 390px |
+| Catálogo de 41 fontes e planejamento de consultas | disponível | disponível | testes de API com fixtures |
+| Consulta pública DNS A/MX/NS | conector HTTP sob demanda | mesmo conector | testes simulados; upstream não confirmado ao vivo |
+| Certificados CT via crt.sh | conector HTTP sob demanda | mesmo conector | testes simulados; upstream não confirmado ao vivo |
+| Perfis públicos GitHub | conector HTTP sob demanda | mesmo conector | testes simulados; perfil não confirma identidade |
+| SHA-256 e dHash de imagens | no navegador, sem upload externo | Pillow no backend local | testes sintéticos; não é busca reversa global |
+| Casos, evidências e grafo | cofre criptografado no navegador, sem sync | SQLite local, sem autenticação multiusuário | roundtrip AES-GCM e API local testados |
+| Sherlock, Maigret, subfinder, Amass | **não executados na Vercel** | adaptadores opcionais de CLI, execução desativada por padrão | comandos testados com subprocess simulado |
+| SpiderFoot | não | necessita serviço separado | inventariado; execução não implementada |
+| OCR de imagens | não | Tesseract opcional | não validado ponta a ponta com Tesseract |
+| MCP | não há MCP público | stdio de leitura experimental | JSON-RPC básico testado, interoperabilidade externa pendente |
+| IA, agentes, busca reversa global | planejados | planejados | não implementados |
+
+### Como funciona o cofre local
+
+Nos sites HTTPS, você pode criar uma senha de **no mínimo 10 caracteres**, desbloquear o cofre e registrar casos, referências com SHA-256, hashes de imagens e grafos. O conteúdo é criptografado com **AES-256-GCM**, chave derivada com **PBKDF2/SHA-256** e salvo somente no armazenamento do navegador atual. Senhas e casos **não são enviados ao servidor**. O navegador não sincroniza dispositivos: **exporte backups periodicamente**. Os arquivos JSON exportados são **texto claro** e devem ser guardados com proteção. Caso perca a senha, não há recuperação automática. O cofre não substitui um sistema corporativo de cadeia de custódia e controle multiusuário.
+
+### Consultas externas
+
+A plataforma nunca procura automaticamente em todos os sites. A aba **Consulta em tempo real** envia a informação inserida **somente ao provedor explicitamente selecionado**, após clicar em **Consultar fonte**. São solicitações a endpoints fixos; as respostas não são dados pessoais verificados nem prova de identidade. Links do catálogo abrem sites de terceiros manualmente. Use apenas dados e finalidades permitidos por lei e pelos termos das fontes.
+
+### Desenvolvimento local opcional
+
+Se precisar de OCR, SQLite local, MCP stdio e motores de CLI, use Python 3.11+:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[test]'
+uvicorn protocolo_osint.main:app --host 127.0.0.1 --port 8000
+```
+
+Acesso local: `http://127.0.0.1:8000`. Nunca exponha `main.py` à internet: a API local é single-user e não possui autenticação.
+
+Para verificar testes e preparar os arquivos Vercel:
+
+```bash
+python -m pytest -q backend/tests
+node --check apps/web/assets/app.js
+node --check apps/web/assets/vault.js
+python scripts/build_vercel.py --output public
+```
+
+Os adaptadores locais são opcionais, **não instalados automaticamente**. A configuração `OSINT_ENABLE_LOCAL_ENGINES=1` só deve ser usada em ambiente privado e controlado, depois de instalar e revisar cada ferramenta. Não habilite esse modo na Vercel.
+
+## Arquitetura e documentos
+
+- `apps/web/` — interface original do Protocolo OSINT, HTML/CSS/JS sem build, incluindo Aurum UI e cofre AES-GCM.
+- `public/` — artefato versionado para Vercel (gerado por `scripts/build_vercel.py`).
+- `app.py` e `backend/src/protocolo_osint/hosted_api.py` — API pública de consultas, sem armazenamento de casos.
+- `backend/src/protocolo_osint/main.py` — backend local completo single-user; SQLite e mídia.
+- `backend/src/protocolo_osint/live_lookup.py` — consultas de endpoints fixos, sem SSRF arbitrário.
+- `backend/src/protocolo_osint/local_engines.py` — adaptadores opcionais para CLIs de terceiros (sem código copiado).
+- `docs/` — [Design System](docs/DESIGN_SYSTEM_AURUM.md), [Integrações](docs/INTEGRATIONS_V04.md), [Arquitetura](docs/ARCHITECTURE.md), [Hospedagem](docs/HOSTING_VERCEL.md), [Roadmap](docs/ROADMAP.md), [Proveniência](docs/IP_PROVENANCE.md).
+
+A evolução segue o princípio **preservar, testar, migrar e ampliar**. A V2 ainda não reproduz integralmente as funcionalidades do HTML legado; a análise de cobertura continua em [`docs/LEGACY_COVERAGE.md`](docs/LEGACY_COVERAGE.md).

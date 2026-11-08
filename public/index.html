@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0A0A0F" />
+  <meta name="description" content="Protocolo OSINT V2 — estação de pesquisa, análise local e documentação de evidências." />
+  <title>Protocolo OSINT V2 · Intelligence Workspace</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23151515'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23F0A121' stroke-width='3'/%3E%3Cpath d='M21 41V22h12c10 0 10 13 0 13H21' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="assets/app.css" />
+  <link rel="stylesheet" href="assets/aurum.css" />
+  <script defer src="assets/vault.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body data-runtime="hosted">
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Menu principal">
+      <a class="identity" href="./" aria-label="Protocolo OSINT V2">
+        <div class="identity-mark"><span>P</span></div>
+        <div class="identity-text"><strong>PROTOCOLO</strong><span>OSINT <em>V2</em></span></div>
+      </a>
+      <div class="workspace-tag"><span class="status-dot"></span> INVESTIGATION STUDIO</div>
+      <div class="sidebar-divider"></div>
+      <div class="nav-group-label">WORKSPACE</div>
+      <nav class="side-nav" id="primary-nav">
+        <button class="nav-link is-active" data-view="dashboard" type="button"><span data-icon="dashboard"></span><span>Visão geral</span><span class="nav-marker"></span></button>
+        <button class="nav-link" data-view="sources" type="button"><span data-icon="search"></span><span>Explorar fontes</span></button>
+        <button class="nav-link" data-view="infra" type="button"><span data-icon="globe"></span><span>Consulta em tempo real</span></button>
+        <button class="nav-link" data-view="images" type="button"><span data-icon="image"></span><span>Laboratório de imagens</span></button>
+        <button class="nav-link" data-view="cases" type="button"><span data-icon="folder"></span><span>Meus casos</span></button>
+        <button class="nav-link" data-view="graph" type="button"><span data-icon="network"></span><span>Mapa de conexões</span></button>
+      </nav>
+      <div class="nav-group-label nav-secondary-title">PLATAFORMA</div>
+      <nav class="side-nav">
+        <button class="nav-link" data-view="integrations" type="button"><span data-icon="plug"></span><span>Integrações & MCP</span></button>
+        <a class="nav-link" href="/api/docs" target="_blank" rel="noopener noreferrer"><span data-icon="code"></span><span>Documentação API</span><span data-icon="arrow-up-right" class="nav-external"></span></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="safe-card"><span class="safe-card-icon" data-icon="shield"></span><div><strong>Ambiente privado</strong><small>Consultas preparadas localmente. Dados sob seu controle.</small></div></div>
+        <div class="sidebar-footer"><span>COMMUNITY FOUNDATION</span><b>v0.4.0</b></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumbs"><button class="mobile-menu" id="mobile-menu" aria-label="Abrir menu" type="button"><span data-icon="menu"></span></button><span>Workspace</span><span class="breadcrumb-slash">/</span><strong id="breadcrumb-current">Visão geral</strong></div>
+        <div class="topbar-controls"><div class="topbar-meta"><span class="top-status"></span><span>OSINT STUDIO</span></div><span class="topbar-separator"></span><span class="topbar-version">PROTOCOLO / 2026</span><button class="icon-button theme-button" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema" type="button"><span data-icon="sun"></span></button><div class="profile-badge">PO</div></div>
+      </header>
+
+      <div class="content-wrap">
+        <section class="panel is-visible" id="panel-dashboard" aria-labelledby="dashboard-heading">
+          <div class="section-overline"><span class="overline-line"></span> SEU CENTRO DE INTELIGÊNCIA <span class="overline-date" id="today-label"></span></div>
+          <div class="hero-grid">
+            <div class="hero-card">
+              <div class="hero-grid-overlay" aria-hidden="true"></div>
+              <div class="hero-top"><span class="hero-eyebrow"><span class="hero-eyebrow-dot"></span> PROTOCOLO OSINT / NOVA GERAÇÃO</span><span class="hero-orbit" data-icon="radar"></span></div>
+              <div class="hero-main"><h1 id="dashboard-heading">Investigue melhor.<br /><span>Encontre conexões.</span></h1><p>Uma estação de inteligência em fontes abertas. Investigue com precisão, organize descobertas e documente cada evidência.</p></div>
+              <form id="global-search-form" class="hero-search"><span data-icon="search"></span><label class="sr-only" for="global-query">Termo para pesquisa OSINT</label><input id="global-query" autocomplete="off" maxlength="512" placeholder="Pesquise um domínio, e-mail, IP, usuário ou palavra-chave..." required /><button type="submit">Explorar <span data-icon="arrow-right"></span></button></form>
+              <div class="hero-hints"><span>EXPERIMENTE</span><button data-query="example.org" type="button">example.org <span data-icon="arrow-up-right"></span></button><button data-query="investigacao digital" type="button">investigacao digital <span data-icon="arrow-up-right"></span></button><button data-query="198.51.100.1" type="button">198.51.100.1 <span data-icon="arrow-up-right"></span></button></div>
+              <div class="hero-decor" aria-hidden="true"><div class="orbit orb-a"></div><div class="orbit orb-b"></div><div class="orbit orb-c"></div><div class="orb-center"></div><div class="orb-pin pin-a"></div><div class="orb-pin pin-b"></div></div>
+            </div>
+            <div class="right-rail"><div class="rail-intro"><span class="eyebrow">STATUS OPERACIONAL</span><span data-icon="activity"></span></div><div class="rail-title">Seu ambiente,<br />em perspectiva.</div><div class="rail-list"><div class="rail-metric"><div class="rail-metric-icon teal" data-icon="globe"></div><div><b id="metric-sources">—</b><small>Fontes catalogadas</small></div><span data-icon="arrow-up-right"></span></div><div class="rail-metric"><div class="rail-metric-icon violet" data-icon="folder"></div><div><b id="metric-cases">—</b><small>Investigações locais</small></div><span data-icon="arrow-up-right"></span></div><div class="rail-metric"><div class="rail-metric-icon amber" data-icon="file-text"></div><div><b id="metric-evidence">—</b><small>Registros documentados</small></div><span data-icon="arrow-up-right"></span></div></div><div class="rail-bottom"><span class="status-dot"></span> Consultas externas somente com sua ação</div></div>
+          </div>
+          <div class="content-heading"><div><div class="eyebrow">FERRAMENTAS</div><h2>Seu kit de investigação</h2><p>Um espaço para pesquisar, analisar e documentar.</p></div><button class="text-link" data-view="sources" type="button">Ver todas as fontes <span data-icon="arrow-right"></span></button></div>
+          <div class="feature-grid">
+            <button type="button" class="feature-card" data-view="sources"><span class="feature-icon fi-teal" data-icon="search"></span><span class="feature-tag">PESQUISA</span><strong>Busca inteligente</strong><span class="feature-desc">Consultas públicas com links estruturados para múltiplas fontes.</span><span class="feature-foot">EXPLORAR <span data-icon="arrow-up-right"></span></span></button>
+            <button type="button" class="feature-card" data-view="infra"><span class="feature-icon fi-orange" data-icon="globe"></span><span class="feature-tag">DADOS AO VIVO</span><strong>Consulta pública</strong><span class="feature-desc">DNS, certificados e perfis públicos, com fontes e momento da consulta.</span><span class="feature-foot">CONSULTAR <span data-icon="arrow-up-right"></span></span></button>
+            <button type="button" class="feature-card" data-view="images"><span class="feature-icon fi-purple" data-icon="image"></span><span class="feature-tag">ANÁLISE</span><strong>Laboratório visual</strong><span class="feature-desc">Hashes, OCR, metadados e similaridade local de imagens.</span><span class="feature-foot">ABRIR LABORATÓRIO <span data-icon="arrow-up-right"></span></span></button>
+            <button type="button" class="feature-card" data-view="cases"><span class="feature-icon fi-blue" data-icon="folder"></span><span class="feature-tag">ORGANIZAÇÃO</span><strong>Gestão de casos</strong><span class="feature-desc">Crie investigações e preserve referências com integridade.</span><span class="feature-foot">VER CASOS <span data-icon="arrow-up-right"></span></span></button>
+            <button type="button" class="feature-card" data-view="graph"><span class="feature-icon fi-orange" data-icon="network"></span><span class="feature-tag">CORRELAÇÃO</span><strong>Mapa de vínculos</strong><span class="feature-desc">Visualize conexões documentadas entre um caso e seus registros.</span><span class="feature-foot">VISUALIZAR <span data-icon="arrow-up-right"></span></span></button>
+          </div>
+          <div class="bottom-strip"><div><span class="status-dot"></span><strong>Privacidade por padrão</strong><span>O processamento de imagens e os registros acontecem no seu dispositivo.</span></div><button data-view="integrations" type="button">Como funciona <span data-icon="arrow-right"></span></button></div>
+        </section>
+
+        <section class="panel" id="panel-sources" aria-label="Explorar fontes">
+          <div class="page-heading"><div><div class="eyebrow">CATÁLOGO DE FONTES</div><h1>Uma busca. Múltiplos caminhos.</h1><p>Prepare consultas para fontes públicas e abra cada resultado em seu provedor original. Links gerados não representam dados já coletados.</p></div><div class="heading-badge"><span data-icon="globe"></span><span id="sources-count">—</span> FONTES</div></div>
+          <form id="source-search-form" class="search-workbench"><span data-icon="search"></span><label class="sr-only" for="source-query">Pesquisar termo</label><input id="source-query" maxlength="512" placeholder="Insira um termo, domínio, e-mail, IP ou usuário" /><button type="submit">Preparar consulta <span data-icon="arrow-right"></span></button></form>
+          <div class="search-meta"><div id="search-detection" class="detected-pill"><span data-icon="radar"></span> Aguardando termo</div><span><span class="info-dot">i</span> Consultas externas somente ao abrir um provedor</span></div>
+          <div class="filter-row" id="source-filters"></div><div class="results-head"><h2 id="results-heading">Fontes disponíveis</h2><span id="results-count">—</span></div>
+          <div class="source-grid" id="source-results"><div class="placeholder">Carregando fontes...</div></div>
+        </section>
+
+        <section class="panel" id="panel-infra" aria-label="Consultas públicas em tempo real">
+          <div class="page-heading"><div><div class="eyebrow">DADOS PÚBLICOS / CONSULTA EXPLÍCITA</div><h1>Informação, com origem.</h1><p>Faça uma consulta ao provedor oficial e veja os registros retornados, a fonte e a data. Não é uma confirmação de identidade nem um serviço de varredura.</p></div><div class="heading-badge"><span data-icon="activity"></span> REQUER CONEXÃO</div></div>
+          <div class="live-grid"><div class="live-form-card"><div class="eyebrow">CONSULTAR PROVEDOR</div><h2>Uma consulta, com rastreabilidade.</h2><form id="live-lookup-form"><label for="live-provider">Fonte pública</label><select id="live-provider"><option value="dns">DNS · Cloudflare DNS-over-HTTPS</option><option value="certificates">Certificados · crt.sh</option><option value="github">Username · GitHub REST</option></select><label for="live-query">Termo da consulta</label><input id="live-query" maxlength="253" required placeholder="Ex.: example.org" autocomplete="off" /><p class="live-provider-hint" id="live-provider-hint">Exige um domínio público. Tipos de registro: A, MX e NS.</p><button class="button primary-button" type="submit" id="live-run"><span data-icon="search"></span> Consultar fonte</button></form><div class="source-privacy"><span data-icon="shield"></span> O termo será enviado ao provedor selecionado somente após você clicar em consultar.</div></div><div class="live-result-card"><div class="result-head"><div><div class="eyebrow">RETORNO DOCUMENTADO</div><h2>Retorno do provedor</h2></div><span class="result-pill" id="live-status">AGUARDANDO</span></div><div id="live-results" class="live-results"><div class="empty-state"><span data-icon="globe"></span><h3>Pronto para uma consulta.</h3><p>Escolha a fonte e informe um domínio ou usuário público.</p></div></div></div></div>
+          <div class="live-method"><span data-icon="file-text"></span><div><strong>Metodologia antes de automação</strong><p>Preservamos a origem e o instante da resposta. Ausência de resultado não comprova inexistência, e associação de username não comprova identidade pessoal.</p></div></div>
+        </section>
+
+        <section class="panel" id="panel-images" aria-label="Laboratório de imagens">
+          <div class="page-heading"><div><div class="eyebrow">FORENSICS LAB / IMAGENS</div><h1>Os detalhes contam histórias.</h1><p>Analise imagens localmente, extraia texto e identifique semelhanças com arquivos indexados em seu caso.</p></div><div class="heading-badge"><span data-icon="shield"></span> SEM UPLOAD EXTERNO</div></div>
+          <div class="lab-grid"><div class="lab-main"><div class="upload-card" id="image-dropzone"><div class="upload-illustration"><span data-icon="upload"></span></div><h2>Arraste sua imagem aqui</h2><p>ou selecione um arquivo para analisar</p><label for="image-input" class="button primary-button">Selecionar imagem <span data-icon="arrow-up-right"></span></label><input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden /><small>PNG, JPG ou WebP · até 10 MB · até 24 MP</small></div><div class="image-preview-wrap" id="image-preview-wrap" hidden><img id="image-preview" alt="Imagem selecionada para análise" /><div><strong id="image-filename"></strong><span id="image-filesize"></span></div></div><div class="form-row lab-action"><label for="image-case">Registrar hashes em caso (opcional)</label><select id="image-case"><option value="">Somente analisar, sem salvar</option></select><button id="analyze-image-button" class="button primary-button" type="button" disabled>Analisar imagem <span data-icon="arrow-right"></span></button></div></div><div class="lab-side"><div class="eyebrow">RECURSOS DISPONÍVEIS</div><div class="analysis-feature"><span data-icon="fingerprint"></span><div><b>Impressões digitais</b><small>SHA-256 e dHash perceptual</small></div></div><div class="analysis-feature"><span data-icon="scan"></span><div><b>Reconhecimento de texto</b><small>OCR local quando instalado</small></div></div><div class="analysis-feature"><span data-icon="camera"></span><div><b>Metadados técnicos</b><small>Modelo, dimensões e EXIF básico</small></div></div><div class="analysis-feature"><span data-icon="layers"></span><div><b>Similaridade em caso</b><small>Compara arquivos registrados no mesmo caso</small></div></div><div class="safety-note"><span data-icon="shield"></span><p>Imagem original não é armazenada e nunca é enviada a buscadores externos.</p></div></div></div>
+          <div class="analysis-output" id="image-output" hidden></div>
+        </section>
+
+        <section class="panel" id="panel-cases" aria-label="Meus casos">
+          <div class="page-heading"><div><div class="eyebrow">CASE MANAGEMENT</div><h1>Organização é inteligência.</h1><p>Separe investigações, documente fontes e mantenha registros com hashes verificáveis.</p></div><button class="button primary-button" id="new-case-toggle" type="button"><span data-icon="plus"></span> Novo caso</button></div>
+          <div class="vault-gate" id="vault-gate"><div class="vault-intro"><span class="vault-symbol" data-icon="shield"></span><div><strong>Cofre pessoal criptografado</strong><p>Seus registros ficam neste navegador, não são enviados ao servidor e não sincronizam entre dispositivos. Guarde a senha e exporte backups.</p></div></div><form id="vault-form" class="vault-form"><label for="vault-pass">Senha do cofre (mínimo 10 caracteres)</label><input id="vault-pass" type="password" autocomplete="off" minlength="10" required placeholder="Sua senha local" /><button type="submit" class="button primary-button" id="vault-submit">Abrir cofre</button></form><div class="vault-tools" id="vault-tools" hidden><span class="vault-status">Cofre desbloqueado nesta sessão</span><button id="vault-backup" type="button">Exportar backup JSON</button><button id="vault-lock" type="button">Bloquear</button></div></div>
+          <form id="case-form" class="case-new-form" hidden><h2>Criar uma investigação</h2><div class="form-fields"><div><label for="case-title">Nome do caso</label><input id="case-title" maxlength="120" required placeholder="Ex.: Monitoramento de infraestrutura" /></div><div><label for="case-description">Descrição e escopo</label><textarea id="case-description" maxlength="1500" rows="2" placeholder="Objetivo e limites da investigação"></textarea></div></div><div class="form-actions"><button class="button ghost-button" id="cancel-case" type="button">Cancelar</button><button class="button primary-button" type="submit">Criar caso <span data-icon="arrow-right"></span></button></div></form>
+          <div class="case-layout"><div><div class="results-head"><h2>Investigações</h2><span id="cases-count">—</span></div><div id="case-list" class="case-list"><div class="placeholder">Carregando casos...</div></div></div><div class="case-detail" id="case-detail"><div class="empty-state"><span data-icon="folder"></span><h3>Seu próximo capítulo começa aqui.</h3><p>Selecione um caso ou crie uma investigação para registrar referências.</p></div></div></div>
+        </section>
+
+        <section class="panel" id="panel-graph" aria-label="Mapa de conexões">
+          <div class="page-heading"><div><div class="eyebrow">RELATIONSHIP VIEW</div><h1>Veja além dos pontos isolados.</h1><p>Um mapa de registros e seus casos de origem. Os vínculos são documentais, não inferências de identidade.</p></div></div>
+          <div class="graph-controls"><label for="graph-case">Caso selecionado</label><select id="graph-case"><option value="">Selecione um caso</option></select><span class="graph-legend"><span></span> CASO <i></i> REGISTRO</span></div><div class="graph-canvas" id="graph-canvas"><div class="empty-state"><span data-icon="network"></span><h3>Conexões que fazem sentido.</h3><p>Adicione registros a uma investigação e selecione o caso para visualizar o mapa.</p></div></div>
+        </section>
+
+        <section class="panel" id="panel-integrations" aria-label="Integrações e MCP">
+          <div class="page-heading"><div><div class="eyebrow">OPEN ECOSYSTEM</div><h1>Feito para evoluir.</h1><p>Uma base modular com integrações transparentes. Somente módulos realmente disponíveis são apresentados como ativos.</p></div><div class="heading-badge"><span data-icon="plug"></span> MCP EXPERIMENTAL</div></div>
+          <div id="integration-list" class="integration-grid"></div>
+          <div class="mcp-card"><div><div class="eyebrow">MODEL CONTEXT PROTOCOL</div><h2>Integre seu workspace a outros agentes.</h2><p>O adaptador MCP via stdio expõe classificação de termos e catálogo de fontes, sem rede, escrita ou execução de comandos. Integração experimental: validação com diferentes clientes ainda pendente.</p></div><div class="code-display"><code>python -m protocolo_osint.mcp_stdio</code><button id="copy-mcp" type="button" title="Copiar comando" aria-label="Copiar comando"><span data-icon="copy"></span></button></div></div>
+        </section>
+        <footer class="global-footer"><div>© Protocolo OSINT V2 · Pesquisa aberta com método</div><div>Resultados de buscas externas não verificados <span class="footer-bullet">•</span> v0.4.0</div></footer>
+      </div>
+    </main>
+  </div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+</body>
+</html>

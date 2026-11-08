@@ -199,4 +199,9 @@
 
   // Existing media-ui.js owns OCR and optional Vision under the same session.
   inspectAuth();
+  // Return the operator to the Engine Studio after the GitHub callback.
+  if(location.hash==="#engines"){
+    const nav=document.querySelector('#primary-nav [data-view="engines"]');
+    if(nav)nav.click();
+  }
 })();

@@ -28,20 +28,35 @@
   wrapper.innerHTML =
     '<div class="eyebrow">PESQUISA INTEGRADA · VERCEL QUEUE</div>' +
     '<h2>Uma pesquisa, vários motores.</h2>' +
-    '<p>Username: Sherlock e Maigret. Domínio: subfinder, Amass e SpiderFoot. ' +
-    'As consultas são externas, explícitas e sujeitas a limites. Nenhum resultado é simulado.</p>' +
+    '<p>Selecione o tipo de alvo ou deixe a detecção automática. Cada motor executa ' +
+    'somente consultas compatíveis e autorizadas. Não são gerados resultados simulados.</p>' +
     '<div id="workflow-auth" class="hosted-auth" role="status">Verificando acesso…</div>' +
     '<form id="workflow-form" class="hosted-workflow-form" autocomplete="off" hidden>' +
-      '<label for="workflow-query">Username ou domínio público autorizado</label>' +
-      '<input id="workflow-query" maxlength="253" required placeholder="Ex.: usuario_publico ou example.org" spellcheck="false">' +
-      '<label for="workflow-engine">Ferramentas</label>' +
+      '<label for="workflow-query">Alvo público autorizado</label>' +
+      '<input id="workflow-query" maxlength="253" required placeholder="Ex.: rod.roldan, example.org, e-mail, IP..." spellcheck="false">' +
+      '<label for="workflow-kind">Tipo de alvo</label>' +
+      '<select id="workflow-kind">' +
+        '<option value="auto">Automático (use o seletor se houver ambiguidade)</option>' +
+        '<option value="username">Username / @identificador</option>' +
+        '<option value="domain">Domínio / subdomínio</option>' +
+        '<option value="url">URL (extrai o domínio, não pesquisa o caminho)</option>' +
+        '<option value="email">E-mail público</option>' +
+        '<option value="ip">Endereço IP público</option>' +
+        '<option value="cidr">Rede IPv4 pública pequena (CIDR)</option>' +
+        '<option value="asn">Sistema autônomo (ASN)</option>' +
+        '<option value="phone">Telefone internacional (+DDI...)</option>' +
+        '<option value="name">Nome de pessoa (com espaço)</option>' +
+        '<option value="bitcoin">Endereço público Bitcoin</option>' +
+      '</select>' +
+      '<p id="workflow-kind-help" class="hosted-status">A identificação automática é aproximada; escolha o tipo para nomes com ponto.</p>' +
+      '<label for="workflow-engine">Ferramentas compatíveis</label>' +
       '<select id="workflow-engine">' +
         '<option value="auto">Automático (seleciona conforme o alvo)</option>' +
         '<option value="sherlock">Sherlock</option><option value="maigret">Maigret</option>' +
         '<option value="subfinder">subfinder</option><option value="amass">OWASP Amass</option>' +
         '<option value="spiderfoot">SpiderFoot (passivo)</option></select>' +
       '<label class="hosted-check"><input type="checkbox" id="workflow-spiderfoot" checked> ' +
-        'Incluir SpiderFoot em pesquisas automáticas de domínio (pode demorar vários minutos)</label>' +
+        'Incluir SpiderFoot nas pesquisas automáticas compatíveis (pode demorar vários minutos)</label>' +
       '<button id="workflow-submit" type="submit" class="button primary-button">Iniciar pesquisa autorizada</button>' +
     '</form>' +
     '<div id="workflow-status" role="status" aria-live="polite"></div>' +
@@ -55,6 +70,38 @@
   const status = $("#workflow-status",wrapper);
   const results = $("#workflow-results",wrapper);
   const submit = $("#workflow-submit",wrapper);
+  const kindSelect=$("#workflow-kind",wrapper), engineSelect=$("#workflow-engine",wrapper);
+  const typesByEngine={
+    sherlock:["username"],maigret:["username"],
+    subfinder:["domain","url"],amass:["domain","url"],
+    spiderfoot:["username","domain","url","email","ip","cidr","asn","phone","name","bitcoin"]
+  };
+  const placeholders={
+    username:"rod.roldan",domain:"example.org",url:"https://example.org/pagina",
+    email:"nome@example.org",ip:"8.8.8.8",cidr:"8.8.8.0/28",
+    asn:"AS15169",phone:"+5511999999999",name:"Maria Silva",bitcoin:"Endereço Bitcoin público"
+  };
+  function updateKind(){
+    const kind=kindSelect.value;
+    const input=$("#workflow-query",wrapper);
+    input.placeholder=placeholders[kind]||"Username, domínio, e-mail, IP, URL, nome...";
+    $("#workflow-kind-help",wrapper).textContent=kind==="auto"
+      ?"Usernames com ponto (ex.: rod.roldan) são reconhecidos quando não parecem domínio conhecido. Escolha Username ou Domínio para garantir."
+      :kind==="url"
+      ?"Somente o hostname público será encaminhado aos motores de domínio; nenhuma página será aberta automaticamente."
+      :["username","domain"].includes(kind)
+      ?"O sistema usa os motores adequados a esse tipo de alvo; fontes externas podem não responder."
+      :"SpiderFoot é o motor compatível. Somente o perfil passivo, com limites de duração e saída.";
+    for(const option of engineSelect.options){
+      if(option.value==="auto")continue;
+      option.disabled=kind!=="auto"&&!typesByEngine[option.value]?.includes(kind);
+    }
+    if(engineSelect.selectedOptions[0]?.disabled)engineSelect.value="auto";
+    const checkbox=$("#workflow-spiderfoot",wrapper);
+    checkbox.disabled=kind!=="auto"&&(!["username","domain","url"].includes(kind));
+  }
+  kindSelect.addEventListener("change",updateKind);
+  updateKind();
 
   async function request(path, options={}) {
     const controller = new AbortController();
@@ -129,7 +176,9 @@
         if(card.done) continue;
         try {
           const response=await request("/api/v1/operator/jobs/"+card.job.job_id);
-          card.statusNode.textContent=(response.status||"pending")+" · "+card.job.job_id.slice(0,8);
+          card.statusNode.textContent=(response.status==="pending"
+            ?"Na fila ou em execução (pode demorar)"
+            :response.status||"pending")+" · "+card.job.job_id.slice(0,8);
           if(response.status==="pending"||response.status==="queued"||response.status==="running")continue;
           card.done=true;
           const records=Array.isArray(response.records)?response.records.slice(0,120):[];
@@ -140,8 +189,11 @@
             "\n\n"+(response.warning||"Resultados externos exigem validação independente.");
           const copy=el("button","button","Copiar resultado");
           copy.type="button";
-          copy.addEventListener("click",()=>navigator.clipboard?.writeText(card.dataNode.textContent)
-            .catch(()=>{ status.textContent="Cópia indisponível neste navegador."; }));
+          copy.addEventListener("click",()=>{
+            if(!navigator.clipboard?.writeText){status.textContent="Cópia indisponível neste navegador.";return;}
+            navigator.clipboard.writeText(card.dataNode.textContent)
+              .catch(()=>{status.textContent="Cópia indisponível neste navegador.";});
+          });
           card.dataNode.after(copy);
         } catch(error){
           card.statusNode.textContent="Falha ao consultar: "+error.message;
@@ -158,6 +210,7 @@
     if(!state.authenticated||state.running)return;
     const value=$("#workflow-query",wrapper).value.trim();
     const engine=$("#workflow-engine",wrapper).value;
+    const target_kind=kindSelect.value;
     const include=$("#workflow-spiderfoot",wrapper).checked;
     if(!value){status.textContent="Informe um username ou domínio.";return;}
     if(!window.confirm("Confirmar consulta OSINT externa para "+value+"? Ferramentas e fontes públicas receberão o termo; o serviço utiliza recursos da Vercel."))return;
@@ -167,11 +220,13 @@
       const response=await request("/api/v1/operator/search",{
         method:"POST",
         headers:{"Content-Type":"application/json","X-OSINT-CSRF":state.csrf},
-        body:JSON.stringify({value,engine,include_spiderfoot:include}),
+        body:JSON.stringify({value,engine,target_kind,include_spiderfoot:include}),
       });
       if(!Array.isArray(response.jobs)||!response.jobs.length)throw Error("Nenhuma tarefa retornada.");
       const cards=renderJobs(response.jobs);
-      status.textContent=response.jobs.length+" tarefas recebidas pela fila. Resultados reais serão mostrados individualmente.";
+      status.textContent=response.jobs.length+" tarefas recebidas · Tipo: "+response.kind+
+        " · Alvo usado: "+(response.normalized_target||value)+
+        ". Resultados reais serão mostrados individualmente.";
       if(Array.isArray(response.errors)&&response.errors.length){
         status.textContent+=" Alguns motores não foram enfileirados: "+response.errors.map(e=>e.engine).join(", ")+".";
       }

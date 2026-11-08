@@ -25,6 +25,14 @@
 | OWASP Amass 5.0.1 | Domínio público (ou hostname extraído de URL) | Passivo, execução durável |
 | SpiderFoot 4.0 | Username, domínio, e-mail, IP público, CIDR IPv4 pequeno, ASN, telefone internacional, nome, endereço Bitcoin | `-u passive`, saída JSON, 2 threads, execução durável |
 
+**Compatibilidade do SpiderFoot v4.0:** o `sf.py` oficial adiciona aspas a
+sementes sem ponto, confundindo ASNs numéricos, IPv6 e Bitcoin com
+usernames. O contêiner Daemon aplica uma alteração de **uma única condição**
+na cópia instalada, sob GPLv2, para manter tipos já reconhecidos pelo
+`SpiderFootHelpers.targetTypeFromString`. O patch falha no build caso o
+arquivo upstream deixe de corresponder à versão fixada; não altera o
+repositório original nem configura módulos ativos.
+
 A versão oficial do SpiderFoot oferece outros modos e módulos, mas **não**
 ativamos varredura ativa, todos os módulos nem acesso a APIs pagas por padrão.
 O sistema não encaminha comandos livres do usuário a nenhum subprocesso.

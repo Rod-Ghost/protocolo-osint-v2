@@ -1,0 +1,22 @@
+/* Hosted-only async OSINT workflows; consistent with the existing dark console */
+.hosted-workflow{display:flex;flex-direction:column;gap:12px;margin:20px 0;padding:16px;border:1px solid rgba(160,175,200,.22);border-radius:12px;background:rgba(12,17,25,.36)}
+.hosted-workflow h2,.hosted-image-search h3{margin:0;font-size:1.2rem}
+.hosted-workflow p{margin:0;line-height:1.5}
+.hosted-workflow-form{display:flex;flex-direction:column;gap:10px}
+.hosted-workflow-form label{font-size:.88rem;font-weight:600}
+.hosted-workflow-form input:not([type=checkbox]),.hosted-workflow-form select{width:100%;max-width:100%;padding:10px 12px;border:1px solid rgba(160,175,200,.3);border-radius:8px;color:inherit;background:#151820}
+.hosted-workflow-form select option{color:#eee;background:#151820}
+.hosted-check{display:flex;align-items:flex-start;gap:9px;font-weight:400!important;line-height:1.45}
+.hosted-check input{margin-top:4px}
+.hosted-workflow-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.hosted-result{min-width:0;border:1px solid rgba(160,175,200,.22);border-radius:9px;padding:12px}
+.hosted-result h3{margin:0 0 8px;font-size:1rem}
+.hosted-records{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:290px;font-size:.78rem;line-height:1.5;padding:12px;border-radius:8px;background:rgba(0,0,0,.3);color:#d9e0e7}
+.hosted-status{font-size:.86rem;color:#b4c2cc;overflow-wrap:anywhere}
+.hosted-auth{display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.hosted-auth a.button{text-decoration:none}
+.hosted-image-search{margin:24px 0;padding:18px;border:1px solid rgba(160,175,200,.22);border-radius:12px}
+.hosted-image-search p{line-height:1.5;margin:10px 0}
+.hosted-image-links{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0}
+.hosted-image-links a{color:#bcd4ff;text-decoration:underline}
+@media(max-width:650px){.hosted-workflow-results{grid-template-columns:1fr}}

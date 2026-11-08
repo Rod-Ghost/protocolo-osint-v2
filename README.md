@@ -96,3 +96,8 @@ A interface de desenvolvimento inclui o tema próprio **Obsidian Red** (preto, v
 - **Testes**: `node tests/test-image-core.cjs`, `backend/tests/test_reverse_image.py` e `backend/tests/test_hosted_reverse.py`. Integrações de fornecedor precisam de validação externa; não proclamar OCR ou Web Detection verificados ao vivo sem esse passo.
 
 A implantação pública não expõe o banco SQLite, caso privado nem tokens. O CI deve passar antes da publicação de novas versões. Consulte `docs/DESIGN_SYSTEM_MONO_V06.md`.
+
+
+## V0.7 MCP customizado (experimental)
+
+A aba Integrações & MCP aceita URL HTTPS, token Bearer opcional, handshake, listagem de ferramentas e chamada com JSON e confirmação. A comunicação é direta do navegador para o servidor escolhido, sem proxy e sem guardar tokens. Presets GitHub/Cloudflare/Pesquisa são modelos de conexão SEM URL/credenciais prontas. CORS do servidor MCP é obrigatório. Stdio, OAuth, SSE contínuo e conexão a qualquer MCP não são garantidos. Não inserir credenciais administrativas em servidores desconhecidos. Ver docs/MCP_CUSTOM_V07.md.

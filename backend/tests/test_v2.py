@@ -23,7 +23,7 @@ def test_home_visual_served():
     page=client.get('/')
     assert page.status_code==200
     assert 'Intelligence Workspace' in page.text
-    assert '/assets/app.js' in page.text
+    assert 'src="assets/app.js"' in page.text
     assert client.get('/assets/app.css').status_code==200
     assert 'nosniff' in page.headers['x-content-type-options']
 

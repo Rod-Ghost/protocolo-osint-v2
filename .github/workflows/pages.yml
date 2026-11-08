@@ -1,0 +1,43 @@
+name: Publish static frontend to GitHub Pages
+
+# Safety: only the reviewed main branch may publish.
+# Developer commits on develop do not update the public site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'backend/src/protocolo_osint/catalog.py'
+      - 'scripts/build_pages.py'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build static-only preview
+        run: python scripts/build_pages.py --output _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy site
+        id: deploy
+        uses: actions/deploy-pages@v4

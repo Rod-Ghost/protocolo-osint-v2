@@ -25,3 +25,10 @@ O Chromium deste ambiente bloqueou com `ERR_BLOCKED_BY_ADMINISTRATOR` tanto `fil
 ## Regressão e uso seguro
 
 Usar dados sintéticos durante testes. Nunca expor o servidor sem autenticação e TLS; no modo atual use somente loopback. Os testes de hash se aplicam a bytes locais e metadados, não certificam autenticidade do conteúdo.
+
+### Publicação de prévia via GitHub Pages (2026-11-08)
+- Workflow de Pages preparado na branch `develop`; executa apenas após inclusão e commit em `main` e habilitação pelo proprietário.
+- Frontend com suporte a caminhos relativos, catálogo estático e análise de hash de imagens via Web Crypto/Canvas, explicitamente sem backend.
+- Build estático validado localmente com 41 fontes. `pytest -q`: 14 testes passaram; `node --check`: passou.
+- Navegação HTTP com Chromium automatizado foi bloqueada pelo ambiente; interface publicada ainda não testada em browser real neste turno.
+- Gestão de casos, OCR, MCP e API continuam restritos ao backend local, não disponíveis no Pages.

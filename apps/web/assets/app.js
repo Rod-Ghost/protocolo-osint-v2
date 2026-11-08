@@ -1,5 +1,6 @@
 /* Protocolo OSINT V2 · zero-build client. No analytics, external scripts or network requests beyond local API. */
 'use strict';
+const staticPreview = document.body.dataset.runtime === 'static';
 const $ = (selector, root=document)=>root.querySelector(selector);
 const $$ = (selector, root=document)=>[...root.querySelectorAll(selector)];
 const esc = (value='')=>String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -35,7 +36,69 @@ const state={view:'dashboard',category:'Todas',kind:null,query:'',sources:[],pla
 const typeLabels={domain:'Domínio',ip:'Endereço IP',email:'E-mail',url:'URL',username_candidate:'Possível usuário',free_text:'Texto livre'};
 let toastTimer=null;
 function toast(message,error=false){const elem=$('#toast');elem.textContent=message;elem.className='toast show'+(error?' error':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>elem.className='toast',4500)}
+let previewCatalogPromise;
+async function previewCatalog(){
+  if(!previewCatalogPromise){
+    previewCatalogPromise=fetch('data/sources.json').then(r=>{if(!r.ok)throw new Error('Catálogo estático indisponível.');return r.json()});
+  }
+  return previewCatalogPromise;
+}
+function previewDetect(raw){
+  const value=raw.trim();
+  if(!value||value.length>512||/[\x00-\x1f]/.test(value))throw new Error('Informe um termo de 1 a 512 caracteres.');
+  if(/^([0-9]{1,3}\.){3}[0-9]{1,3}$/.test(value) && value.split('.').every(n=>Number(n)<256))return 'ip';
+  if(/^[0-9a-f:]+$/i.test(value)&&value.includes(':')&&value.includes('::'))return 'ip';
+  if(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(value))return 'email';
+  try{const url=new URL(value);if(['http:','https:'].includes(url.protocol)&&url.hostname)return 'url'}catch{}
+  if(/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(value))return 'domain';
+  if(/^@?[a-z0-9_.-]{2,50}$/i.test(value))return 'username_candidate';
+  return 'free_text';
+}
+async function previewAnalyze(file){
+  if(!(file instanceof File))throw new Error('Imagem não encontrada.');
+  if(file.size>10485760||!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error('Use PNG, JPEG ou WebP até 10 MB.');
+  const raw=await file.arrayBuffer();
+  const digest=await crypto.subtle.digest('SHA-256',raw);
+  const sha256=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const bitmap=await createImageBitmap(file);
+  if(bitmap.width*bitmap.height>24000000){bitmap.close();throw new Error('A imagem excede 24 megapixels.');}
+  const canvas=document.createElement('canvas');canvas.width=9;canvas.height=8;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(bitmap,0,0,9,8);
+  const pixels=ctx.getImageData(0,0,9,8).data;
+  let hash=0n;
+  for(let y=0;y<8;y++)for(let x=0;x<8;x++){
+    const offset=(y*9+x)*4, next=offset+4;
+    const lum=i=>pixels[i]*0.299+pixels[i+1]*0.587+pixels[i+2]*0.114;
+    hash=(hash<<1n)|(lum(offset)>lum(next)?1n:0n);
+  }
+  const result={format:file.type==='image/jpeg'?'JPEG':file.type==='image/png'?'PNG':'WEBP',
+    width:bitmap.width,height:bitmap.height,bytes:file.size,sha256,dhash:hash.toString(16).padStart(16,'0'),
+    metadata:{camera_make:null,camera_model:null,captured_at:null,gps_present:false},
+    ocr:{status:'unavailable',text:''},similar_in_case:[],registered_in_case:false};
+  bitmap.close();return result;
+}
+async function previewApi(path,options={}){
+  const sources=await previewCatalog();
+  if(path==='/api/v1/summary')return {sources:sources.length,cases:0,evidence:0};
+  if(path==='/api/v1/sources')return {sources:sources.map(({template,...rest})=>rest),total:sources.length};
+  if(path==='/api/v1/search/plan'){
+    const body=JSON.parse(options.body||'{}');const query=(body.value||'').trim();const kind=previewDetect(query);
+    const results=sources.filter(s=>s.kinds.includes(kind)).map(({template,...rest})=>({...rest,url:template.replaceAll('{query}',encodeURIComponent(query)),verified:false}));
+    return {query,kind,results,total:results.length,external_requests:0};
+  }
+  if(path==='/api/v1/cases')return {items:[]};
+  if(path==='/api/v1/integrations')return {integrations:[
+    {name:'Catálogo de busca',status:'active',detail:'41 consultas locais, sem API externa'},
+    {name:'Hash de imagem no navegador',status:'active',detail:'SHA-256 e dHash sem upload, no dispositivo do visitante'},
+    {name:'OCR e EXIF avançado',status:'planned',detail:'Disponível no backend, não nesta prévia estática'},
+    {name:'Casos e evidências',status:'planned',detail:'Requer backend e armazenamento persistente'},
+    {name:'MCP e agentes',status:'planned',detail:'Requer servidor de execução autorizado'}]};
+  if(path==='/api/v1/images/analyze')return previewAnalyze(options.body?.get('file'));
+  throw new Error('Este recurso precisa da API completa e não está disponível na demonstração pública.');
+}
 async function api(path,options={}){
+  if(staticPreview)return previewApi(path,options);
   const response=await fetch(path,options);
   if(!response.ok){let msg=`Falha local (${response.status})`;try{const detail=await response.json();msg=typeof detail.detail==='string'?detail.detail:msg}catch{}throw new Error(msg)}
   return response.json();
@@ -138,6 +201,25 @@ async function drawGraph(){const id=$('#graph-case').value;if(!id){$('#graph-can
 async function loadIntegrations(){try{const r=await api('/api/v1/integrations');$('#integration-list').innerHTML=r.integrations.map(item=>`<article class="integration-card"><span class="integration-symbol" data-icon="${item.status==='active'?'shield':item.status==='experimental'?'plug':'layers'}"></span><div class="integration-card-main"><h3>${esc(item.name)}</h3><p>${esc(item.detail)}</p></div><span class="integration-status ${esc(item.status)}">${item.status==='active'?'ATIVO':item.status==='experimental'?'EXPERIMENTAL':'PLANEJADO'}</span></article>`).join('');icons($('#integration-list'))}catch(e){toast(e.message,true)}}
 function bind(){
   icons();
+  if(staticPreview){
+    const banner=document.createElement('div');
+    banner.className='static-preview-banner';
+    banner.innerHTML='<strong>DEMONSTRAÇÃO WEB</strong> · Busca e hashes de imagens funcionam no navegador. Casos, OCR, EXIF e MCP exigem o backend completo.';
+    document.querySelector('.content-wrap').prepend(banner);
+    const docs=document.querySelector('a[href="/api/docs"]');
+    if(docs)docs.hidden=true;
+    const newCase=document.querySelector('#new-case-toggle');
+    newCase.addEventListener('click',event=>{event.stopImmediatePropagation();toast('Gestão de casos requer um backend privado. Não armazene evidências nesta prévia.',true)},true);
+    newCase.title='Requer backend privado';
+    document.querySelector('.safe-card strong').textContent='Modo demonstração';
+    document.querySelector('.safe-card small').textContent='Sem servidor de dados. Seu arquivo de imagem não é enviado.';
+    document.querySelector('.topbar-meta span:last-child').textContent='WEB PREVIEW';
+    document.querySelector('.global-footer div:first-child').textContent='© Protocolo OSINT V2 · Demonstração web em evolução';
+    document.querySelector('.lab-side .safety-note p').textContent='SHA-256 e dHash calculados no navegador; sem OCR, EXIF avançado ou busca reversa externa.';
+    document.querySelector('#panel-images .page-heading p').textContent='Calcule hashes e dimensões de imagens no navegador, sem upload externo. OCR e comparação entre casos exigem o backend.';
+    document.querySelector('#panel-cases .page-heading p').textContent='O gerenciamento persistente de casos está disponível apenas na instalação com backend protegido.';
+  }
+
   document.addEventListener('click',event=>{const view=event.target.closest('[data-view]');if(view){event.preventDefault();go(view.dataset.view)}const hint=event.target.closest('[data-query]');if(hint){$('#global-query').value=hint.dataset.query;search(hint.dataset.query)}const category=event.target.closest('[data-category]');if(category){state.category=category.dataset.category;renderSources()}const choice=event.target.closest('[data-case]');if(choice){loadCase(choice.dataset.case)}});
   $('#global-search-form').addEventListener('submit',event=>{event.preventDefault();search($('#global-query').value)});
   $('#source-search-form').addEventListener('submit',event=>{event.preventDefault();search($('#source-query').value)});

@@ -70,6 +70,10 @@ O painel principal não precisa de npm. Um protótipo React/TypeScript anterior 
 - O servidor é **single-user**, sem autenticação. Use somente em `127.0.0.1`; não o exponha em rede pública.
 - Não garante anonimato, veracidade de informações de fontes externas ou busca reversa global de imagens.
 
+## Prévia web via GitHub Pages
+
+A publicação estática é gerada automaticamente por GitHub Actions após a configuração do GitHub Pages e commits revisados na branch `main`. Essa versão funciona sem instalação para catálogo de buscas e análise de hashes de imagens no próprio navegador, **mas não executa backend, casos persistentes, OCR, EXIF avançado ou MCP**. Veja [GUIA DE PUBLICAÇÃO](docs/GITHUB_PAGES.md).
+
 ## Arquitetura e comunidade
 
 - `apps/web/`: frontend estático independente de build (HTML/CSS/JS).

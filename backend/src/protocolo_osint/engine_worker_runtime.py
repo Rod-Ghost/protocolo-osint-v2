@@ -52,9 +52,11 @@ def worker_command(engine_id: str, value: str, which=shutil.which, *, target_kin
         return [binary, "enum", "-passive", "-d", target, "-timeout", "3", "-nocolor", "-silent"]
     if engine_id == "spiderfoot":
         # Stable SpiderFoot CLI supports a passive-only module set and JSON output.
-        # sf.py auto-detects dotted handles as INTERNET_NAME unless literally
-        # quoted in argv; quoted seeds become USERNAME/HUMAN_NAME in v4.0.
-        seed = '"' + target + '"' if target_kind in {"username", "name"} else target
+        # Dotted usernames need explicit quotes to avoid INTERNET_NAME.
+        # sf.py itself wraps names with spaces; double-quoting would be wrong.
+        # Our pinned Vercel installation patches v4.0 to preserve ASN/IPv6/BTC
+        # type detection before its username fallback.
+        seed = '"' + target + '"' if target_kind == "username" else target
         return [binary, "-s", seed, "-u", "passive", "-o", "json", "-max-threads", "2", "-q"]
     raise EngineError("Motor não implementado.")
 

@@ -29,12 +29,19 @@ async def security_headers(request,call_next):
     # Sensitive local SQLite endpoints are never served to network clients.
     # Hosted Vercel routes are a DIFFERENT app (hosted_api.py).
     sensitive = (request.url.path.startswith('/api/v1/cases') or
-                 request.url.path.startswith('/api/v1/images/analyze'))
+                 request.url.path.startswith('/api/v1/images/analyze') or
+                 request.url.path == '/api/v1/engines/run')
     if sensitive:
         peer = request.client.host if request.client else ''
         if peer not in {'127.0.0.1','::1','localhost','testclient'}:
-            return JSONResponse({'detail':'Dados investigativos disponíveis somente no dispositivo local.'},
+            return JSONResponse({'detail':'Operação disponível somente no dispositivo local.'},
                                 status_code=403)
+        # Block DNS rebinding and cross-site browser requests to loopback.
+        host = request.url.hostname
+        if host not in {'localhost','127.0.0.1','::1'} and not (peer == 'testclient' and host == 'testserver'):
+            return JSONResponse({'detail':'Host local inválido.'}, status_code=403)
+        if request.headers.get('sec-fetch-site') == 'cross-site':
+            return JSONResponse({'detail':'Requisição externa bloqueada.'}, status_code=403)
         origin = request.headers.get('origin')
         if origin:
             try:

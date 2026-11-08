@@ -38,7 +38,8 @@ def test_bounded_runner_no_shell_and_limits(monkeypatch):
     def fake(cmd,**kwargs):
         seen.update(kwargs)
         assert cmd[0]=='/usr/bin/subfinder'
-        assert cmd[-1]=='30'
+        assert '-max-results' not in cmd
+        assert cmd[cmd.index('-rl')+1]=='5'
         return SimpleNamespace(stdout='a.example.org\nb.example.org\na.example.org\nnope\n',stderr='',returncode=0)
     result=hub.execute('subfinder','example.org',runner=fake)
     assert result['records']==['a.example.org','b.example.org']

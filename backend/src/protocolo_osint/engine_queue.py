@@ -24,6 +24,12 @@ UUID_RE = re.compile(r"^[0-9a-f]{32}$")
 # namespace. Functions and Daemons have different deployment identifiers.
 QUEUE_REGION = "gru1"
 
+# Hobby free-tier budget: writing a heartbeat once per minute would exhaust
+# the monthly Private Blob advanced-operation allowance in ~33 hours.
+HEARTBEAT_INTERVAL_SECONDS = 30 * 60
+HEARTBEAT_FRESHNESS_SECONDS = 50 * 60
+QUEUE_IDLE_POLL_SECONDS = 30
+
 
 def _queue_client():
     """Use one explicitly scoped queue across serverless + daemon deployments.
@@ -61,12 +67,34 @@ async def submit(engine: str, target: str, *, authenticated: bool = False, sende
     return {"job_id": job_id, "status": "queued", "engine": engine, "notice": "Enfileirado; conclusão depende da disponibilidade real do daemon."}
 
 
-async def process_job(payload: dict, *, engine_runner=run_worker_engine, blob_writer=None) -> dict:
+async def _read_completed_record(job_id: str) -> dict | None:
+    """Read a previously persisted result before retrying an at-least-once job."""
+    from vercel.blob import BlobNotFoundError, get_blob
+    try:
+        item = await get_blob(f"osint-jobs/{job_id}/result.json", access="private")
+    except BlobNotFoundError:
+        return None
+    record = json.loads(item.body)
+    if not isinstance(record, dict) or record.get("job_id") != job_id:
+        raise EngineError("Resultado privado inconsistente; tarefa não repetida.")
+    return record
+
+
+async def process_job(payload: dict, *, engine_runner=run_worker_engine,
+                      blob_writer=None, completed_reader=None) -> dict:
     """Process one validated queue delivery; persist result in PRIVATE Blob."""
     if not isinstance(payload, dict) or not UUID_RE.fullmatch(str(payload.get("job_id", ""))):
         raise EngineError("Identificador de tarefa inválido.")
     item = validate_job(str(payload.get("engine", "")), str(payload.get("target", "")))
     job_id = payload["job_id"]
+    # An acknowledged result must not be collected again on queue redelivery.
+    # When a test supplies an in-memory writer, skip the live Blob read unless
+    # the caller also injects a reader.
+    if completed_reader is not None or blob_writer is None:
+        reader = completed_reader or _read_completed_record
+        previous = await reader(job_id)
+        if previous is not None:
+            return previous
     try:
         output = await asyncio.to_thread(engine_runner, item["engine"], item["target"])
     except EngineError as exc:
@@ -105,13 +133,13 @@ async def worker_loop(*, poller=None, sleeper=asyncio.sleep):
     os.environ.setdefault("VERCEL_REGION", QUEUE_REGION)
     last_heartbeat = 0.0
     while True:
-        if time.monotonic() - last_heartbeat >= 60:
+        if time.monotonic() - last_heartbeat >= HEARTBEAT_INTERVAL_SECONDS:
             await publish_heartbeat()
             last_heartbeat = time.monotonic()
         async for delivery in poller(topic=TOPIC, consumer_group=GROUP, limit=1):
             async with delivery as message:
                 await process_job(message.payload)
-        await sleeper(2)
+        await sleeper(QUEUE_IDLE_POLL_SECONDS)
 
 
 def main():

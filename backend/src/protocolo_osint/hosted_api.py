@@ -21,7 +21,7 @@ from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
-from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE
+from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE, HEARTBEAT_FRESHNESS_SECONDS
 
 VERSION = "1.2.0"
 ROOT = Path(__file__).resolve().parents[3]
@@ -245,7 +245,8 @@ async def operational_readiness():
         "queue": {"configured": enabled, "tested": False, "region": "gru1"},
         "operator_auth": {"configured": credential_ok, "method": "admin-token-temporary"},
         "private_blob": {"binding_detected": blob_detected, "tested": False},
-        "daemon": {"recent_heartbeat": live, "tested_job": False},
+        "daemon": {"recent_heartbeat": live, "tested_job": False,
+                   "heartbeat_max_age_seconds": HEARTBEAT_FRESHNESS_SECONDS},
         "can_submit_jobs": enabled and credential_ok and blob_detected and live,
         "notice": "Variáveis e heartbeat não comprovam consultas externas operacionais."
     }
@@ -257,7 +258,8 @@ async def engine_queue_capabilities():
     configured = os.getenv("OSINT_ENGINE_QUEUE_ENABLED") == "1"
     result = {"configured": configured, "workers_health": "unverified",
               "admin_auth_required": True, "storage": "private-blob",
-              "notice": "Instalação não prova execução; verifique heartbeat do daemon."}
+              "notice": "Instalação não prova execução; verifique heartbeat do daemon.",
+              "heartbeat_max_age_seconds": HEARTBEAT_FRESHNESS_SECONDS}
     if not configured:
         return result
     try:
@@ -268,7 +270,7 @@ async def engine_queue_capabilities():
         data = json.loads(item.body)
         observed = datetime.fromisoformat(data["observed_at"])
         seconds = (datetime.now(timezone.utc) - observed).total_seconds()
-        if 0 <= seconds <= 180:
+        if 0 <= seconds <= HEARTBEAT_FRESHNESS_SECONDS:
             result["workers_health"] = "heartbeat-recent"
             result["last_seen_utc"] = observed.isoformat()
             result["engines"] = [

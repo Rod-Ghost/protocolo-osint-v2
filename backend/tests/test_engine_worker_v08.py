@@ -71,3 +71,31 @@ def test_processing_writes_private_record(monkeypatch):
     assert result['status']=='completed' and calls[0][0]=='osint-jobs/'+'a'*32+'/result.json'
     assert calls[0][2]['access']=='private'
     assert b'x.example.org' in calls[0][1]
+
+
+
+def test_at_least_once_delivery_does_not_repeat_finished_scan():
+    """An already persisted job must not invoke the real CLI again."""
+    import asyncio
+    payload = {'job_id': 'b' * 32, 'engine': 'sherlock', 'target': 'alice'}
+    calls = []
+    async def reader(job_id):
+        assert job_id == payload['job_id']
+        return {'job_id': job_id, 'status': 'completed', 'records': ['previous']}
+    async def writer(*args, **kwargs):
+        calls.append('write')
+    def runner(*args):
+        calls.append('executed')
+        raise AssertionError('Cannot repeat an already persisted investigation')
+    got = asyncio.run(process_job(payload, completed_reader=reader,
+                                   blob_writer=writer, engine_runner=runner))
+    assert got['records'] == ['previous']
+    assert calls == []
+
+
+def test_queued_worker_uses_budgeted_poll_and_heartbeat():
+    from protocolo_osint import engine_queue
+    assert engine_queue.QUEUE_REGION == 'gru1'
+    assert engine_queue.HEARTBEAT_INTERVAL_SECONDS >= 1800
+    assert engine_queue.QUEUE_IDLE_POLL_SECONDS >= 30
+    assert engine_queue.HEARTBEAT_FRESHNESS_SECONDS > engine_queue.HEARTBEAT_INTERVAL_SECONDS

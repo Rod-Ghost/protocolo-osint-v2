@@ -14,9 +14,9 @@ FastAPI, Starlette, Pydantic, httpx, Uvicorn, Pillow, pytest e pytesseract (opci
 | Maigret | https://github.com/soxoj/maigret | MIT |
 | subfinder | https://github.com/projectdiscovery/subfinder | MIT |
 | OWASP Amass | https://github.com/owasp-amass/amass | Apache 2.0 (componentes exigem verificação) |
-| SpiderFoot | https://github.com/smicallef/spiderfoot | MIT |
+| SpiderFoot v4.0 | https://github.com/smicallef/spiderfoot/tree/v4.0 | GPLv2 (licença da tag v4.0; a branch atual pode diferir) |
 
-**Não há cópias desses repositórios dentro da V2.** Os adaptadores somente constroem comandos para executáveis instalados pelo operador, com execução desativada por padrão e proibida na API hospedada. SpiderFoot consta no inventário, mas ainda precisa de serviço dedicado antes de funcionar. A obrigação de manter copyright e avisos permanece válida se bibliotecas ou partes desses projetos forem incorporadas no futuro.
+**Não há cópias desses repositórios dentro da V2.** Os adaptadores somente constroem comandos para executáveis instalados pelo operador, com execução desativada por padrão e proibida na API hospedada. SpiderFoot é executável como CLI no computador quando instalado em ambiente isolado e a execução local estiver ativada; o Daemon hospedado continua separado. A obrigação de manter copyright e avisos permanece válida se bibliotecas ou partes desses projetos forem incorporadas no futuro.
 
 ## Referências visuais
 
@@ -30,7 +30,7 @@ O catálogo de 41 fontes é uma lista de **destinos externos** (links), sem parc
 
 A V2 referencia e pode instalar **Sherlock Project 0.16.2** (licença MIT, [licença e código oficial](https://github.com/sherlock-project/sherlock)) e **Maigret 0.6.6** (licença MIT, [licença e código oficial](https://github.com/soxoj/maigret)) via gerenciador pip. Isso não altera a titularidade dos projetos nem as obrigações de preservar os avisos de copyright/licença distribuídos nos respectivos pacotes e dependências transitivas.
 
-O contêiner de referência `deploy/engines/Dockerfile` descreve a instalação de **subfinder** (MIT, https://github.com/projectdiscovery/subfinder), **OWASP Amass** (Apache-2.0; componentes podem ter licenças próprias, https://github.com/owasp-amass/amass) e **SpiderFoot** (MIT, https://github.com/smicallef/spiderfoot). Este contêiner ainda não foi construído, auditado ou hospedado em produção. A licença definitiva de **código original** da V2 permanece pendente.
+O contêiner de referência `deploy/engines/Dockerfile` descreve a instalação de **subfinder** (MIT, https://github.com/projectdiscovery/subfinder), **OWASP Amass** (Apache-2.0; componentes podem ter licenças próprias, https://github.com/owasp-amass/amass) e **SpiderFoot v4.0** (GPLv2, https://github.com/smicallef/spiderfoot/tree/v4.0). Este contêiner ainda não foi construído, auditado ou hospedado em produção. A licença definitiva de **código original** da V2 permanece pendente.
 
 **Retificação do texto anterior:** os adaptadores continuam independentes, mas a API pública agora apresenta inventário e possui uma rota de execução **bloqueada por padrão e protegida por chave no servidor**. A API não permite executar motores sem opt-in explícito. Não devem ser interpretados resultados de terceiros como confirmação de identidade.
 

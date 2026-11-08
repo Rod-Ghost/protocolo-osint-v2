@@ -45,7 +45,8 @@ def test_sender_uses_shared_client_without_external_requests(monkeypatch):
         seen.append((topic, payload, options))
         return "local-test-only"
     class FakeClient:
-        send = staticmethod(send)
+        pass
+    FakeClient.send = staticmethod(send)
     monkeypatch.setattr(engine_queue, "_queue_client", lambda: FakeClient())
     monkeypatch.setenv("OSINT_ENGINE_QUEUE_ENABLED", "1")
     result = __import__("asyncio").run(engine_queue.submit(

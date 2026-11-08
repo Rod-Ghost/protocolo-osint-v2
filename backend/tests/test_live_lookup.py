@@ -62,7 +62,11 @@ def test_public_api_separation_and_security():
     assert app_client.get('/api/v1/lookup/providers').status_code==200
     assert app_client.get('/api/v1/cases').status_code==404
     assert app_client.post('/api/v1/cases',json={'title':'do not store'}).status_code==404
-    assert app_client.get('/api/v1/engines').status_code==404
+    engines=app_client.get('/api/v1/engines')
+    assert engines.status_code==200
+    assert len(engines.json()['engines'])==5
+    assert all('runnable' in item for item in engines.json()['engines'])
+    assert app_client.post('/api/v1/engines/run',json={'engine':'sherlock','value':'exampleuser'}).status_code==503
     assert app_client.post('/api/v1/search/plan',json={'value':'example.org'}).json()['external_requests']==0
     assert app_client.post('/api/v1/lookup',json={'value':'https://example.org','provider':'dns'}).status_code in (422,502)
     assert app_client.get('/api/v1/health').headers['x-content-type-options']=='nosniff'

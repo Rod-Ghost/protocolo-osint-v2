@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .catalog import SOURCES, list_sources, plan
+from .investigation_lab import analyze as lab_analyze, OPERATIONS as LAB_OPERATIONS
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
@@ -22,7 +23,7 @@ from .image_routes import router as image_router
 from .mcp_remote_server import mcp as remote_mcp, server_app as mcp_server_app
 from .engine_queue import submit as queue_submit, UUID_RE as JOB_UUID_RE
 
-VERSION = "0.9.0"
+VERSION = "1.0.0"
 ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = ROOT / "public"
 
@@ -68,6 +69,25 @@ def home():
     if PUBLIC.joinpath("index.html").is_file():
         return FileResponse(PUBLIC / "index.html", media_type="text/html")
     raise HTTPException(404, "Frontend não incluído neste deploy.")
+
+
+class LabRequest(BaseModel):
+    operation: str = Field(min_length=2,max_length=40)
+    payload: dict = Field(default_factory=dict)
+
+@app.get("/api/v1/lab/capabilities")
+def lab_capabilities():
+    return {"operations":list(LAB_OPERATIONS),"mode":"offline-stateless",
+            "persistence":False,"external_requests":0,
+            "warning":"Resultados locais derivados de entradas do operador; não comprovam fontes."}
+
+@app.post("/api/v1/lab/analyze")
+def lab_analyze_route(request:LabRequest):
+    try:
+        result=lab_analyze(request.operation,request.payload)
+    except (ValueError,TypeError,OverflowError) as exc:
+        raise HTTPException(422,str(exc)) from exc
+    return {"operation":request.operation,"result":result,"persistence":False}
 
 
 @app.get("/api/v1/health")

@@ -20,10 +20,11 @@ async function request(path,options={}){
 function showStatus(message){$('#queue-status').textContent=message;}
 async function inspect(){
  try{
-  const data=await request('/api/v1/engines/queue/capabilities');
-  config=data.configured===true;
-  $('#queue-availability').textContent=!config?'Fila indisponível':data.workers_health==='heartbeat-recent'?'Worker detectado · teste de consulta pendente':'Fila configurada · worker não verificado';
-  $('#queue-note').textContent=config?'O envio exige autenticação administrativa. Uma tarefa enfileirada não comprova que um worker está ativo.':'A fila/worker não estão ativados nesta hospedagem. A interface permanece em modo informativo.';
+  const data=await request('/api/v1/system/readiness');
+  config=data.can_submit_jobs===true;
+  const heartbeat=data.daemon?.recent_heartbeat===true;
+  $('#queue-availability').textContent=config?'Worker detectado · acesso configurado':heartbeat?'Worker presente · configuração incompleta':'Envio bloqueado';
+  $('#queue-note').textContent=config?'Os recursos foram detectados, mas consultas reais ainda exigem teste e autorização do administrador.':'A fila de pesquisas permanece desabilitada enquanto não houver autenticação, armazenamento privado e worker com heartbeat recente.';
   $('#queue-send').disabled=!config;
  }catch(e){$('#queue-availability').textContent='Estado indisponível';$('#queue-send').disabled=true;showStatus('Não foi possível consultar a fila: '+e.message);}
 }

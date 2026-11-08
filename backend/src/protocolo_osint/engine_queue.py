@@ -20,6 +20,20 @@ TOPIC = "protocolo-osint-engine-v1"
 GROUP = "protocolo-engine-workers"
 UUID_RE = re.compile(r"^[0-9a-f]{32}$")
 
+# All queue producers/consumers MUST use the same region and deployment
+# namespace. Functions and Daemons have different deployment identifiers.
+QUEUE_REGION = "gru1"
+
+
+def _queue_client():
+    """Use one explicitly scoped queue across serverless + daemon deployments.
+
+    The SDK gets scoped OIDC credentials from Vercel; never commit tokens.
+    """
+    from vercel.queue import ALL_DEPLOYMENTS, QueueClient
+    return QueueClient(region=QUEUE_REGION, deployment=ALL_DEPLOYMENTS)
+
+
 
 def _authorized(authenticated: bool) -> bool:
     # Must be passed only after validating a request-scoped administrator identity.
@@ -41,8 +55,7 @@ async def submit(engine: str, target: str, *, authenticated: bool = False, sende
     clean = validate_job(engine, target)
     job_id = uuid.uuid4().hex
     if sender is None:
-        from vercel.queue import send
-        sender = send
+        sender = _queue_client().send
     message = {"job_id": job_id, **clean, "issued_at": datetime.now(timezone.utc).isoformat()}
     await sender(TOPIC, message, idempotency_key=job_id, retention=timedelta(hours=1))
     return {"job_id": job_id, "status": "queued", "engine": engine, "notice": "Enfileirado; conclusão depende da disponibilidade real do daemon."}
@@ -88,9 +101,8 @@ async def worker_loop(*, poller=None, sleeper=asyncio.sleep):
     if os.environ.get("OSINT_WORKER_AUTHORIZED") != "1":
         raise EngineError("Worker precisa ser ativado em instância isolada.")
     if poller is None:
-        from vercel.queue import poll
-        poller = poll
-    os.environ.setdefault("VERCEL_REGION", "gru1")
+        poller = _queue_client().poll
+    os.environ.setdefault("VERCEL_REGION", QUEUE_REGION)
     last_heartbeat = 0.0
     while True:
         if time.monotonic() - last_heartbeat >= 60:

@@ -113,3 +113,8 @@ Os cinco motores são empacotáveis em um **único container worker**: Sherlock,
 ## v0.8.1 — Visibilidade de motores reais
 
 O inventário na tela de Motores de pesquisa passa a combinar presença local do executável na API e heartbeat recente do Daemon privado, sem inventar instalação. Ao detectar heartbeat válido (menos de 180s), mostra `WORKER ATIVO` e direciona à fila autenticada; o botão HTTP síncrono permanece desabilitado para o motor externo. Um heartbeat não comprova sucesso de investigação, apenas presença do worker. Sem Daemon/Queue/Private Blob configurados, status permanece pendente.
+
+
+## v0.9 — Diagnóstico operacional no painel
+
+Em Motores de pesquisa, o diagnóstico da API apresenta fila, autorização, armazenamento privado e daemon em estados separados. A interface só habilita envio de novas tarefas se todos os pré-requisitos detectáveis estiverem presentes, inclusive heartbeat recente. A autenticação continua obrigatória e uma tarefa enviada não prova que fontes externas responderam. O publisher/consumer da Queue compartilha a região gru1 e o namespace de todos os deployments, evitando isolamento acidental entre releases de Function/Daemon. Os cinco motores foram testados como executáveis em Docker CI; a execução real depende de infraestrutura e autenticação na conta Vercel rodrigo11. Nenhum recurso pago foi ativado por este commit.

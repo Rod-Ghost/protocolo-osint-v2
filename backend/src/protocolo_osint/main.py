@@ -16,8 +16,10 @@ from .catalog import SOURCES, list_sources, plan
 from .detection import detect_type
 from .media import InvalidImage, MAX_BYTES, analyze
 from .store import get_store
+from .live_lookup import LookupError, PROVIDERS, lookup
+from .local_engines import EngineError, inventory, run
 
-app = FastAPI(title='Protocolo OSINT V2', version='0.2.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
+app = FastAPI(title='Protocolo OSINT V2', version='0.4.0', docs_url='/api/docs', openapi_url='/api/openapi.json')
 app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['GET','POST'], allow_headers=['Content-Type'])
 
 @app.middleware('http')
@@ -38,6 +40,14 @@ class DetectRequest(BaseModel):
 class SearchRequest(BaseModel):
     value: str = Field(min_length=1,max_length=512)
     category: str|None = Field(default=None,max_length=80)
+
+class LookupRequest(BaseModel):
+    provider: Literal['dns','certificates','github']
+    value: str = Field(min_length=1,max_length=253)
+
+class EngineRunRequest(BaseModel):
+    engine: Literal['sherlock','maigret','subfinder','amass']
+    value: str = Field(min_length=2,max_length=253)
 
 class CaseCreate(BaseModel):
     title: str = Field(min_length=2,max_length=120)
@@ -66,7 +76,7 @@ class EvidenceCreate(BaseModel):
         return value.strip()
 
 @app.get('/api/v1/health')
-def health():return {'status':'ok','version':'0.2.0','external_requests':0}
+def health():return {'status':'ok','version':'0.4.0','external_requests':0}
 
 @app.post('/api/v1/detect')
 def detect(payload:DetectRequest):
@@ -101,6 +111,23 @@ def integrations():
         {'name':'Visão de internet','status':'planned','detail':'Busca reversa externa exige provedores e consentimento'},
         {'name':'IA e vetores','status':'planned','detail':'Não conectados; nenhum dado enviado'},
     ]}
+
+@app.get('/api/v1/lookup/providers')
+def lookup_providers():
+    return {'providers': [{'id': k, **v, 'status': 'configured'} for k,v in PROVIDERS.items()]}
+
+@app.post('/api/v1/lookup')
+def lookup_public(request: LookupRequest):
+    try: return lookup(request.value, request.provider)
+    except LookupError as exc: raise HTTPException(422,str(exc)) from exc
+
+@app.get('/api/v1/engines')
+def available_engines(): return {'engines': inventory()}
+
+@app.post('/api/v1/engines/run')
+def execute_local_engine(request: EngineRunRequest):
+    try: return run(request.engine,request.value)
+    except EngineError as exc: raise HTTPException(422,str(exc)) from exc
 
 @app.get('/api/v1/cases')
 def cases():return {'items':get_store().list_cases()}

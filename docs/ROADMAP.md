@@ -32,3 +32,17 @@
 ## Publicação
 
 A visibilidade permanece **privada** até saneamento de procedência, aprovação da licença definitiva e auditoria de segurança. Consulte `RELEASE_GATE.md`.
+
+## v0.4 — progresso de execução (08/11/2026)
+
+**Concluído em código e teste controlado:** Aurum UI, prévia web com fontes e hashes, cofre AES-GCM local browser, camada Vercel FastAPI pública, integrações explícitas DNS/CT/GitHub (mocks), inventário + adaptadores locais Sherlock/Maigret/subfinder/Amass. Os programas de terceiros **não estão instalados** na Vercel e a integração live ainda precisa de teste remoto. Veja `docs/INTEGRATIONS_V04.md` e `docs/VALIDATION.md`.
+
+**Próximos gates técnicos para experiência completa na nuvem:**
+1. Confirmar publicação HTTP na Vercel do proprietário com branch main correta.
+2. Limitar uso de `/api/v1/lookup` por identidade/IP utilizando solução distribuída; telemetria sem logs de consultas sensíveis.
+3. Autenticação e autorização multiusuário; banco PostgreSQL com regras de acesso e backups; consentimento de retenção e LGPD.
+4. Workers persistentes/filas para Sherlock/Maigret/SpiderFoot/subfinder/Amass; sandbox, quota, cooldown, cancelamento, limpeza e direitos de uso.
+5. OCR, extração de documentos, EXIF técnico, APIs oficiais de busca reversa com opt-in, armazenamento opcional privado.
+6. MCP remoto com autenticação por usuário e escopos mínimos, trilha de auditoria, ferramentas read-only primeiro.
+7. Evidência versionada, captura contextual, hashes de conteúdo original, exportação forense e cadeia de custódia.
+8. CI navegadores reais, testes de provedores com fixture contratual, auditoria de dependências/licenças e publicação sob licença OSS aprovada.

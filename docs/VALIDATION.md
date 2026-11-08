@@ -32,3 +32,16 @@ Usar dados sintéticos durante testes. Nunca expor o servidor sem autenticação
 - Build estático validado localmente com 41 fontes. `pytest -q`: 14 testes passaram; `node --check`: passou.
 - Navegação HTTP com Chromium automatizado foi bloqueada pelo ambiente; interface publicada ainda não testada em browser real neste turno.
 - Gestão de casos, OCR, MCP e API continuam restritos ao backend local, não disponíveis no Pages.
+
+## Ciclo v0.4.0 — 2026-11-08 (testado nesta execução)
+
+- `python -m pytest -q backend/tests`: **28 passed**, incluindo validação do catálogo, endpoints locais, rotas públicas que não expõem casos, mocks de consultas DNS/crt.sh/GitHub, limites de resposta e cofre browser com AES-GCM real em Node Web Crypto.
+- `node --check apps/web/assets/app.js` e `node --check apps/web/assets/vault.js`: **passaram**.
+- `python scripts/build_vercel.py --output public`: **passou**, gerando HTML+CSS+JS+catálogo de 41 fontes para o Vercel.
+- Chromium offline via `render_aurum.py`, com respostas da API **simuladas**: dashboard e aba de consulta renderizaram sem exceções JavaScript; consulta simulada exibiu 1 registro; viewport móvel 390px com `scrollWidth=390`.
+- Criptografia browser roundtrip: criar cofre, criptografar dados, validar que texto sensível não aparece no storage, recusar senha errada, desbloquear, exportar e comparar dHashes (via Node Web Crypto). **A persistência em navegador real por HTTPS ainda não foi testada ponta a ponta**.
+- Executáveis Sherlock, Maigret, subfinder e Amass **não foram instalados/executados**; somente a construção segura da linha de comando e flags foi testada com runner simulado. SpiderFoot ainda não foi integrado como serviço.
+- Redes externas (Cloudflare DNS, crt.sh e API GitHub): **nenhuma requisição upstream realizada** durante os testes; disponibilidade de provedores não verificada ao vivo. Endpoints HTTP hospedados na Vercel precisam ser validados após deployment da branch `main`.
+- A Vercel da conta vinculada pelo proprietário foi criada externamente. O assistente não tem acesso confirmado à leitura desse workspace no conector; não confundir commit publicado no GitHub com site online em produção.
+
+**Pendências:** autenticação multiusuário, sincronização segura, rate limiting distribuído, análise real de OCR em hospedagem, integração CLI em workers isolados, MCP remoto autenticado, observabilidade e auditoria de licenças.

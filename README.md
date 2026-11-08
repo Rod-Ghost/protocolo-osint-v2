@@ -1,28 +1,45 @@
 # Protocolo OSINT V2 — Intelligence Workspace
 
-> **PRÉVIA PRIVADA · v0.2.0.** Plataforma local-first de pesquisa em fontes abertas. **Ainda não pronta para publicação pública**, sobretudo por pendências de procedência e licença da versão original. Não contém cópia do sistema legado nem código de ferramentas OSINT de terceiros.
+**V2 v0.4.0 · Interface Aurum UI · Pesquisa em fontes abertas com origem e contexto.**
 
-![Dashboard do Protocolo OSINT V2](docs/assets/dashboard.png)
+> Esta versão contém código novo, separado da base HTML legada enquanto a titularidade e a licença do material original são revisadas. O repositório pode estar visível publicamente, mas **a licença open source do código próprio ainda não foi definida**. Não confundir visibilidade pública com concessão de direitos de reutilização. Consulte [procedência](docs/IP_PROVENANCE.md) e [critério de publicação](docs/RELEASE_GATE.md).
 
-## Funcionalidades disponíveis agora
+![Prévia do dashboard Aurum](docs/assets/aurum-dashboard.png)
 
-| Módulo | Estado | Como foi verificado |
-|---|---|---|
-| Painel responsivo, navegação e tema | Prévia funcional | JS executado em Chromium com respostas locais simuladas; navegação HTTP direta bloqueada no ambiente de testes |
-| Detecção de termos (IP, domínio, e-mail, URL, username, texto) | Testado | pytest/TestClient |
-| Catálogo de 41 fontes, em 12 categorias | Testado localmente | URLs HTTPS construídas; **destinos não acessados nem validados** |
-| Pesquisa com links por tipo de termo | Testado localmente | planejamento sem requisições externas |
-| Casos e registros locais | Testado | SQLite: criar, consultar, registrar evidências, exportar JSON |
-| SHA-256, dHash e metadados de imagens | Testado | imagem sintética PNG; sem armazenamento de pixels |
-| OCR local | Implementado, dependente de Tesseract | Teste unitário usou OCR desativado; não validado ponta a ponta com Tesseract |
-| Busca de similares em caso | Testado | distância de dHash em imagens sintéticas |
-| Mapa de registros documentados | Testado parcialmente | API e SVG na simulação visual |
-| MCP local via stdio | Experimental | Testado o JSON-RPC local; compatibilidade com clientes MCP externos não validada |
-| Sherlock, Maigret, SpiderFoot, IA, busca reversa global | **Não implementado** | São módulos do roadmap; não são apresentados como funcionais |
+## Comece no navegador — sem instalar Python ou Git
 
-### Inicie a V2 hoje — sem Node.js
+A interface da V2 está preparada para a Vercel, com os arquivos estáticos em `public/` e o backend público **FastAPI** em `app.py`.
 
-Requer **Python 3.11+**. Em Linux/macOS:
+A hospedagem depende de o projeto Vercel estar conectado ao repositório correto e de um deployment concluído. Consulte [GUIA VERCEL](docs/HOSTING_VERCEL.md). **O código armazenado no GitHub não comprova que um domínio de produção já tenha sido atualizado.**
+
+### Matriz de funcionalidades
+
+| Capacidade | No navegador/na Vercel | Local/worker dedicado | Validação nesta revisão |
+|---|---|---|---|
+| Dashboard compacto Aurum e temas | disponível | disponível | Chromium renderizado com mocks, desktop e 390px |
+| Catálogo de 41 fontes e planejamento de consultas | disponível | disponível | testes de API com fixtures |
+| Consulta pública DNS A/MX/NS | conector HTTP sob demanda | mesmo conector | testes simulados; upstream não confirmado ao vivo |
+| Certificados CT via crt.sh | conector HTTP sob demanda | mesmo conector | testes simulados; upstream não confirmado ao vivo |
+| Perfis públicos GitHub | conector HTTP sob demanda | mesmo conector | testes simulados; perfil não confirma identidade |
+| SHA-256 e dHash de imagens | no navegador, sem upload externo | Pillow no backend local | testes sintéticos; não é busca reversa global |
+| Casos, evidências e grafo | cofre criptografado no navegador, sem sync | SQLite local, sem autenticação multiusuário | roundtrip AES-GCM e API local testados |
+| Sherlock, Maigret, subfinder, Amass | **não executados na Vercel** | adaptadores opcionais de CLI, execução desativada por padrão | comandos testados com subprocess simulado |
+| SpiderFoot | não | necessita serviço separado | inventariado; execução não implementada |
+| OCR de imagens | não | Tesseract opcional | não validado ponta a ponta com Tesseract |
+| MCP | não há MCP público | stdio de leitura experimental | JSON-RPC básico testado, interoperabilidade externa pendente |
+| IA, agentes, busca reversa global | planejados | planejados | não implementados |
+
+### Como funciona o cofre local
+
+Nos sites HTTPS, você pode criar uma senha de **no mínimo 10 caracteres**, desbloquear o cofre e registrar casos, referências com SHA-256, hashes de imagens e grafos. O conteúdo é criptografado com **AES-256-GCM**, chave derivada com **PBKDF2/SHA-256** e salvo somente no armazenamento do navegador atual. Senhas e casos **não são enviados ao servidor**. O navegador não sincroniza dispositivos: **exporte backups periodicamente**. Os arquivos JSON exportados são **texto claro** e devem ser guardados com proteção. Caso perca a senha, não há recuperação automática. O cofre não substitui um sistema corporativo de cadeia de custódia e controle multiusuário.
+
+### Consultas externas
+
+A plataforma nunca procura automaticamente em todos os sites. A aba **Consulta em tempo real** envia a informação inserida **somente ao provedor explicitamente selecionado**, após clicar em **Consultar fonte**. São solicitações a endpoints fixos; as respostas não são dados pessoais verificados nem prova de identidade. Links do catálogo abrem sites de terceiros manualmente. Use apenas dados e finalidades permitidos por lei e pelos termos das fontes.
+
+### Desenvolvimento local opcional
+
+Se precisar de OCR, SQLite local, MCP stdio e motores de CLI, use Python 3.11+:
 
 ```bash
 cd backend
@@ -32,54 +49,27 @@ python -m pip install -e '.[test]'
 uvicorn protocolo_osint.main:app --host 127.0.0.1 --port 8000
 ```
 
-Abra **http://127.0.0.1:8000**. A documentação da API estará em **http://127.0.0.1:8000/api/docs**.
+Acesso local: `http://127.0.0.1:8000`. Nunca exponha `main.py` à internet: a API local é single-user e não possui autenticação.
 
-No PowerShell (Windows), ative o ambiente com `.venv\Scripts\Activate.ps1` e use o mesmo comando `uvicorn`. Se o Python não reconhecer o comando, utilize `python -m uvicorn ...`.
-
-#### Opcional: OCR local
-
-Instale o aplicativo **Tesseract OCR** no sistema operacional e instale `pip install -e '.[ocr]'` no diretório `backend`. Para desabilitar por completo use `OSINT_OCR_ENABLED=0`. Se não estiver disponível, a interface mostrará `OCR indisponível`; o restante do laboratório continua funcional.
-
-#### Opcional: Docker
+Para verificar testes e preparar os arquivos Vercel:
 
 ```bash
-docker compose up --build
-```
-
-Abra **http://127.0.0.1:8000**. O serviço é exposto somente na interface loopback do computador hospedeiro e os registros ficam no volume Docker `osint_data`. **Não exponha esta API publicamente sem autenticação, controle de acesso e revisão de segurança.**
-
-### Testar
-
-```bash
-cd backend
-python -m pip install -e '.[test]'
-pytest -q
-cd ..
+python -m pytest -q backend/tests
 node --check apps/web/assets/app.js
+node --check apps/web/assets/vault.js
+python scripts/build_vercel.py --output public
 ```
 
-O painel principal não precisa de npm. Um protótipo React/TypeScript anterior foi preservado em `apps/react-foundation/` como referência para eventual migração; **não** é o frontend executado por padrão.
+Os adaptadores locais são opcionais, **não instalados automaticamente**. A configuração `OSINT_ENABLE_LOCAL_ENGINES=1` só deve ser usada em ambiente privado e controlado, depois de instalar e revisar cada ferramenta. Não habilite esse modo na Vercel.
 
-### Privacidade e limitações
+## Arquitetura e documentos
 
-- Classificação de termos, planejamento de links e inspeção de imagens não fazem requisições a terceiros.
-- Ao **clicar em uma fonte externa**, o navegador visita aquele provedor; verifique os termos e evite consultas indevidas.
-- A aplicação armazena casos e metadados no SQLite local (padrão: `~/.local/share/protocolo-osint-v2/`). Defina `OSINT_DATA_DIR` para alterar.
-- Imagens originais não são gravadas. Se o usuário selecionar um caso, serão gravados somente hashes, dimensões, nome e resumo, que podem ainda ser sensíveis.
-- O hash de um **registro** não equivale à preservação da página externa como evidência forense; isto será implementado separadamente.
-- O servidor é **single-user**, sem autenticação. Use somente em `127.0.0.1`; não o exponha em rede pública.
-- Não garante anonimato, veracidade de informações de fontes externas ou busca reversa global de imagens.
+- `apps/web/` — interface original do Protocolo OSINT, HTML/CSS/JS sem build, incluindo Aurum UI e cofre AES-GCM.
+- `public/` — artefato versionado para Vercel (gerado por `scripts/build_vercel.py`).
+- `app.py` e `backend/src/protocolo_osint/hosted_api.py` — API pública de consultas, sem armazenamento de casos.
+- `backend/src/protocolo_osint/main.py` — backend local completo single-user; SQLite e mídia.
+- `backend/src/protocolo_osint/live_lookup.py` — consultas de endpoints fixos, sem SSRF arbitrário.
+- `backend/src/protocolo_osint/local_engines.py` — adaptadores opcionais para CLIs de terceiros (sem código copiado).
+- `docs/` — [Design System](docs/DESIGN_SYSTEM_AURUM.md), [Integrações](docs/INTEGRATIONS_V04.md), [Arquitetura](docs/ARCHITECTURE.md), [Hospedagem](docs/HOSTING_VERCEL.md), [Roadmap](docs/ROADMAP.md), [Proveniência](docs/IP_PROVENANCE.md).
 
-## Prévia web via GitHub Pages
-
-A publicação estática é gerada automaticamente por GitHub Actions após a configuração do GitHub Pages e commits revisados na branch `main`. Essa versão funciona sem instalação para catálogo de buscas e análise de hashes de imagens no próprio navegador, **mas não executa backend, casos persistentes, OCR, EXIF avançado ou MCP**. Veja [GUIA DE PUBLICAÇÃO](docs/GITHUB_PAGES.md).
-
-## Arquitetura e comunidade
-
-- `apps/web/`: frontend estático independente de build (HTML/CSS/JS).
-- `backend/`: API FastAPI + SQLite + análise de mídia + catálogo de fontes.
-- `apps/react-foundation/`: protótipo anterior preservado, não ativo.
-- `docs/`: arquitetura, proveniência, validação, roadmap e políticas.
-- `.github/workflows/`: testes de regressão.
-
-Veja [ARQUITETURA](docs/ARCHITECTURE.md), [VALIDAÇÃO](docs/VALIDATION.md), [ROADMAP](docs/ROADMAP.md) e [PROCEDÊNCIA](docs/IP_PROVENANCE.md). O código novo está sendo elaborado para um projeto open source, mas a licença final depende da revisão de direitos e componentes de terceiros.
+A evolução segue o princípio **preservar, testar, migrar e ampliar**. A V2 ainda não reproduz integralmente as funcionalidades do HTML legado; a análise de cobertura continua em [`docs/LEGACY_COVERAGE.md`](docs/LEGACY_COVERAGE.md).

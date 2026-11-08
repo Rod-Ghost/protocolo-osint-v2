@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --check apps/web/assets/app.js
+      - run: node --check apps/web/assets/vault.js
   check-provenance:
     runs-on: ubuntu-latest
     steps:

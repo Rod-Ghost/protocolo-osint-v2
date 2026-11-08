@@ -1,7 +1,7 @@
 # Protocolo OSINT V2 — opt-in Vercel daemon image, NOT an HTTP service.
 # All upstream projects retain their copyright/license. Sources installed by
 # pinned official release versions at image build, not pasted into V2 codebase.
-FROM golang:1.27-bookworm AS go-engines
+FROM golang:1.26-bookworm AS go-engines
 ENV CGO_ENABLED=0 GOBIN=/opt/bin
 RUN mkdir -p /opt/bin && \
     go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.9.0 && \
@@ -25,6 +25,7 @@ RUN git clone --depth 1 --branch v4.0 https://github.com/smicallef/spiderfoot.gi
            -e 's/cryptography>=3.4.8,<4/cryptography>=41,<46/' \
            -e 's/pyOpenSSL>=21.0.0,<22/pyOpenSSL>=24,<26/' \
            -e 's/networkx>=2.6.3,<2.7/networkx>=2.8,<3.3/' \
+           -e 's/lxml>=4.6.3,<5/lxml>=6.0.2,<7/' \
            /opt/spiderfoot/requirements.txt && \
     python -m pip install --no-cache-dir -r /opt/spiderfoot/requirements.txt
 RUN printf '#!/bin/sh\nexec python /opt/spiderfoot/sf.py "$@"\n' > /usr/local/bin/spiderfoot && \

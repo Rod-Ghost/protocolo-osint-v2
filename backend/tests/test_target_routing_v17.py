@@ -141,17 +141,17 @@ def test_hosted_auto_username_no_longer_routes_to_domain(monkeypatch):
         calls.append((engine, target, kwargs))
         return {"status":"queued", "job_id": f"{len(calls):032x}"}
     monkeypatch.setattr(hosted_api, "queue_submit", fake_submit)
-    with TestClient(hosted_api.app) as client:
-        resp = client.post("/api/v1/operator/search", json={
-            "value":"rod.roldan","engine":"auto","target_kind":"auto"
-        })
-        assert resp.status_code == 202, resp.text
-        assert resp.json()["kind"] == "username"
-        assert [x["engine"] for x in resp.json()["jobs"]] == [
+    client = TestClient(hosted_api.app)
+    resp = client.post("/api/v1/operator/search", json={
+        "value":"rod.roldan","engine":"auto","target_kind":"auto"
+    })
+    assert resp.status_code == 202, resp.text
+    assert resp.json()["kind"] == "username"
+    assert [x["engine"] for x in resp.json()["jobs"]] == [
             "sherlock", "maigret", "spiderfoot"
         ]
-        assert all(target == "rod.roldan" for _, target, _ in calls)
-        assert calls[-1][2]["target_kind"] == "username"
+    assert all(target == "rod.roldan" for _, target, _ in calls)
+    assert calls[-1][2]["target_kind"] == "username"
 
 
 def test_hosted_url_is_hostname_only_and_no_path_disclosed(monkeypatch):
@@ -163,10 +163,10 @@ def test_hosted_url_is_hostname_only_and_no_path_disclosed(monkeypatch):
         received.append((engine,target))
         return {"status":"queued", "job_id": f"{len(received):032x}"}
     monkeypatch.setattr(hosted_api,"queue_submit",fake_submit)
-    with TestClient(hosted_api.app) as client:
-        response=client.post("/api/v1/operator/search",json={
-            "value":"https://example.org/private/path?password=secret","target_kind":"url"
-        })
+    client = TestClient(hosted_api.app)
+    response=client.post("/api/v1/operator/search",json={
+        "value":"https://example.org/private/path?password=secret","target_kind":"url"
+    })
     assert response.status_code == 202
     assert response.json()["normalized_target"] == "example.org"
     assert all(target=="example.org" for _,target in received)

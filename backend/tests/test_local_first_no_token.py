@@ -64,6 +64,8 @@ def test_hosted_engine_endpoints_remain_disabled_without_admin_configuration(mon
     monkeypatch.delenv("OSINT_ENGINE_EXECUTION_ENABLED", raising=False)
     monkeypatch.delenv("OSINT_ENGINE_QUEUE_ENABLED", raising=False)
     payload = {"engine": "subfinder", "value": "example.org"}
-    with TestClient(public_app) as client:
-        assert client.post("/api/v1/engines/run", json=payload).status_code == 503
-        assert client.post("/api/v1/engines/jobs", json=payload).status_code == 503
+    # No hosted MCP lifespan here: the shared MCP SDK session manager is
+    # exercised separately in its own integration tests.
+    client = TestClient(public_app)
+    assert client.post("/api/v1/engines/run", json=payload).status_code == 503
+    assert client.post("/api/v1/engines/jobs", json=payload).status_code == 503

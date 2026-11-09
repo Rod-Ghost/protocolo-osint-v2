@@ -51,6 +51,8 @@
       const iv = random(12);
       const cipher = new Uint8Array(await cryptoApi.subtle.encrypt({name:'AES-GCM',iv},key,bytes));
       const record = JSON.stringify({version:1,iterations:ITERATIONS,salt:base64(salt),iv:base64(iv),data:base64(cipher)});
+      if(getRaw()!==current)
+        throw new Error('Este cofre mudou durante a gravação. Recarregue a página para evitar sobrescrita.');
       storage.setItem(STORAGE_KEY,record);lastRaw=record;changed();
     }
     let vaultSalt = null;
@@ -332,6 +334,47 @@
         const c=await this.getCase(caseId);if(!c)return null;
         return {nodes:[{id:c.id,label:c.title,kind:'case'},...c.evidence.map(e=>({id:e.id,label:e.title,kind:e.kind}))],
                 edges:c.evidence.map(e=>({source:c.id,target:e.id}))};
+      },
+      async previewBackupRestore(cases){
+        assertUnlocked();
+        const backup=root.ProtocoloPortableBackup;
+        if(!backup)throw Error('Módulo de backup criptografado indisponível.');
+        const verified=await backup.validateCases(cases,cryptoApi);
+        const present=new Map(state.cases.map(c=>[c.id,c]));
+        const additions=[],duplicates=[],conflicts=[];
+        for(const c of cases){
+          const existing=present.get(c.id);
+          if(!existing)additions.push({id:c.id,title:c.title});
+          else if(JSON.stringify(existing)===JSON.stringify(c))
+            duplicates.push({id:c.id,title:c.title});
+          else conflicts.push({id:c.id,title:c.title});
+        }
+        return {
+          cases_in_backup:verified.cases,records_in_backup:verified.evidence,
+          new_cases:additions.length,duplicates:duplicates.length,
+          conflicts,additional_case_ids:additions.map(c=>c.id),
+          policy:'merge-without-replacement'
+        };
+      },
+      async restoreBackupCases(cases){
+        assertUnlocked();
+        const assessment=await this.previewBackupRestore(cases);
+        if(assessment.conflicts.length)
+          throw Error('IDs de casos já existem com conteúdo diferente. A restauração foi cancelada sem substituir dados; use um cofre vazio para recuperar essa versão.');
+        if(!assessment.new_cases)return {restored:0,duplicates:assessment.duplicates,total:state.cases.length};
+        const before=state;
+        // Allocate the new state in isolation, then swap only during a
+        // single authenticated write. Any storage/quota error rolls back.
+        const proposed=clone(state);
+        const incoming=new Set(assessment.additional_case_ids);
+        proposed.cases.push(...clone(cases.filter(c=>incoming.has(c.id))));
+        if(coder.encode(JSON.stringify(proposed)).length>MAX_DATA_BYTES)
+          throw Error('Cofre de destino não possui espaço. Nenhum caso foi substituído.');
+        state=proposed;
+        try{await save(vaultSalt);}
+        catch(error){state=before;throw error}
+        return {restored:assessment.new_cases,duplicates:assessment.duplicates,
+          total:proposed.cases.length};
       },
       async exportCase(caseId){const c=await this.getCase(caseId);if(!c)throw new Error('Caso não encontrado.');return {format:'protocolo-osint/v2-case-export',case:c,notice:'Backup JSON NÃO criptografado. Armazene em local seguro.'};},
       async exportAll(){assertUnlocked();return {format:'protocolo-osint/v2-vault-backup',exported_at:now(),cases:clone(state.cases),notice:'Backup JSON NÃO criptografado. Armazene em local seguro.'};}

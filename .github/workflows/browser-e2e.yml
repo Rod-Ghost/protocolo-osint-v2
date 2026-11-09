@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/browser-e2e.yml'
       - 'tests/browser-production-flow.cjs'
+      - 'tests/browser-evidence-flow.cjs'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +27,8 @@ jobs:
         env:
           OSINT_E2E_URL: https://protocolo-osint-v2-nine.vercel.app
         run: node tests/browser-production-flow.cjs
+      - name: Test mock OAuth and engine evidence in Chromium (offline)
+        run: node tests/browser-evidence-flow.cjs
       - name: Save error-only screenshot
         if: failure()
         uses: actions/upload-artifact@v4

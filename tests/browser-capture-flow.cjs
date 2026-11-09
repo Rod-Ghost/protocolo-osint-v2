@@ -123,6 +123,69 @@ async function main(){
     assert(!JSON.stringify(exported).includes('bytes_base64'));
     await page.locator('#primary-nav [data-view="cases"]').click();
 
+    // Portable encrypted backup: export on profile A, reject a wrong password,
+    // restore into profile B with its own new vault password and verify the
+    // original archived bytes and evidence-linked graph survive.
+    await page.locator('#pb-export-pass').fill('Isolated backup passphrase #2026 TEST');
+    await page.locator('#pb-export-confirm').fill('Isolated backup passphrase #2026 TEST');
+    const encryptedDownload=page.waitForEvent('download');
+    await page.locator('#pb-export').click();
+    const archiveDownload=await encryptedDownload;
+    assert(archiveDownload.suggestedFilename().endsWith('.osintbackup'));
+    const archived=readFileSync(await archiveDownload.path(),'utf8');
+    assert.equal(JSON.parse(archived).format,'protocolo-osint/encrypted-portable-backup-v1');
+    assert(!archived.includes('laboratorio.txt')&&!archived.includes('example.org'));
+    const second=await browser.newContext({locale:'pt-BR',acceptDownloads:false});
+    const page2=await second.newPage();
+    page2.on('dialog',d=>d.accept());
+    page2.on('pageerror',e=>errors.push('restore browser: '+e.message));
+    await page2.route('**/api/v1/**',route=>route.fulfill({
+      status:200,contentType:'application/json',body:JSON.stringify({})
+    }));
+    try{
+      await page2.goto(local.url,{waitUntil:'domcontentloaded'});
+      await page2.locator('#primary-nav [data-view="cases"]').click();
+      await page2.locator('#vault-pass').fill('Another browser-local vault password 2026!');
+      await page2.locator('#vault-submit').click();
+      await page2.locator('#vault-gate.unlocked').waitFor();
+      const chooseFile=()=>page2.locator('#pb-file').setInputFiles({
+        name:'portable.osintbackup',mimeType:'application/octet-stream',
+        buffer:Buffer.from(archived,'utf8')
+      });
+      await chooseFile();
+      await page2.locator('#pb-import-pass').fill('incorrect backup passphrase 2026');
+      await page2.locator('#pb-import').click();
+      await page2.locator('#pb-feedback').getByText('Senha do backup incorreta',{exact:false}).waitFor();
+      assert.equal((await page2.evaluate(()=>browserVault.listCases())).length,0,
+        'Wrong passphrase changed destination vault');
+      await chooseFile();
+      await page2.locator('#pb-import-pass').fill('Isolated backup passphrase #2026 TEST');
+      await page2.locator('#pb-import').click();
+      await page2.locator('#pb-feedback').getByText('Restauração concluída',{exact:false}).waitFor();
+      const restored=await page2.evaluate(async()=>{
+        const items=await browserVault.listCases();
+        const entry=await browserVault.getCase(items[0].id);
+        const cap=entry.evidence.find(e=>e.capture);
+        const verified=await browserVault.verifyCapture(entry.id,cap.id);
+        return {count:items.length,sha:cap.capture.sha256_bytes,
+          verified:verified.valid,title:entry.title};
+      });
+      assert.equal(restored.count,1);
+      assert.equal(restored.sha,hash);
+      assert.equal(restored.verified,true);
+      assert.equal(restored.title,'Caso E2E de captura de arquivo');
+      await chooseFile();
+      await page2.locator('#pb-import-pass').fill('Isolated backup passphrase #2026 TEST');
+      await page2.locator('#pb-import').click();
+      await page2.locator('#pb-feedback').getByText('Nenhum caso novo',{exact:false}).waitFor();
+      assert.equal((await page2.evaluate(()=>browserVault.listCases())).length,1);
+      await page2.locator('#vault-lock').click();
+      await page2.locator('#pb-export-pass').waitFor();
+      assert.equal(await page2.locator('#pb-export').isEnabled(),false);
+    }finally{
+      await second.close();
+    }
+
     // Never leak encrypted payload to the public server or view it after lock.
     const cipher=await page.evaluate(()=>localStorage.getItem('protocolo-osint:vault:1'));
     assert(cipher&&!cipher.includes('laboratorio.txt')&&!cipher.includes('Arquivo de laboratório'));

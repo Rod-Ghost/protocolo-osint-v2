@@ -5,6 +5,7 @@ on:
       - '.github/workflows/browser-e2e.yml'
       - 'tests/browser-production-flow.cjs'
       - 'tests/browser-evidence-flow.cjs'
+      - 'tests/browser-capture-flow.cjs'
   workflow_dispatch:
 
 permissions:
@@ -29,6 +30,8 @@ jobs:
         run: node tests/browser-production-flow.cjs
       - name: Test mock OAuth and engine evidence in Chromium (offline)
         run: node tests/browser-evidence-flow.cjs
+      - name: Test file capture, SHA and encrypted vault in Chromium
+        run: node tests/browser-capture-flow.cjs
       - name: Save error-only screenshot
         if: failure()
         uses: actions/upload-artifact@v4

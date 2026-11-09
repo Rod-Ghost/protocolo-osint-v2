@@ -46,6 +46,34 @@
         '',
         escapeMD(e.note||'Sem anotação'),
         '');
+      const p=e.provenance;
+      if(p?.type==='engine_observation'){
+        lines.push('**Procedência:** saída bruta de motor OSINT, revisada e registrada manualmente.',
+          '',
+          '**Verificação:** NÃO VERIFICADO — não confirma identidade ou autenticidade.',
+          '',
+          '**Motor:** '+escapeMD(p.engine),
+          '',
+          '**Job ID:** '+escapeMD(p.job_id),
+          '',
+          '**Alvo consultado:** '+escapeMD(p.target),
+          '',
+          '**Tipo de alvo:** '+escapeMD(p.target_kind),
+          '',
+          '**Data informada pelo motor:** '+escapeMD(p.observed_at||'não informada'),
+          '',
+          '**SHA-256 da linha registrada:** '+escapeMD(p.raw_sha256),
+          '',
+          '**Referência do software (não da fonte verificada):** '+
+            escapeMD(p.tool_reference||'não informada'),
+          '',
+          '**Saída bruta, sem validação independente:**',
+          '',
+          '\`\`\`text',
+          norm(p.raw_record).replace(/\`\`\`/g,'[delimitador omitido]'),
+          '\`\`\`',
+          '');
+      }
     });
     if(Array.isArray(caseData.search_plans)&&caseData.search_plans.length){
       lines.push('## Planos de busca e revisões manuais','',

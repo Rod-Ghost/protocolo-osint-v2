@@ -430,7 +430,7 @@ function bind(){
   $('#source-search-form').addEventListener('submit',event=>{event.preventDefault();search($('#source-query').value)});
   $('#new-case-toggle').addEventListener('click',()=>{$('#case-form').hidden=false;$('#case-title').focus()});
   $('#cancel-case').addEventListener('click',()=>{$('#case-form').hidden=true});
-  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();toast('Caso criado no banco local.')}catch(e){toast(e.message,true)}});
+  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();toast((hostedPreview||staticPreview)?'Caso criado no cofre criptografado deste navegador.':'Caso criado no banco local.')}catch(e){toast(e.message,true)}});
   $('#image-input').addEventListener('change',event=>setImage(event.target.files[0]));
   const drop=$('#image-dropzone');drop.addEventListener('dragover',event=>{event.preventDefault();drop.classList.add('dragging')});drop.addEventListener('dragleave',()=>drop.classList.remove('dragging'));drop.addEventListener('drop',event=>{event.preventDefault();drop.classList.remove('dragging');setImage(event.dataTransfer.files[0])});
   $('#analyze-image-button').addEventListener('click',analyzeImage);

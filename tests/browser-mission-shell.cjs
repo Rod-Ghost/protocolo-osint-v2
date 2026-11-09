@@ -69,7 +69,7 @@ async function run(){
 
     await page.keyboard.press('Control+k');
     await page.locator('#ops-command-query').waitFor({state:'visible'});
-    assert.equal(await page.locator('#ops-command-query').isFocused(),true);
+    assert.equal(await page.locator('#ops-command-query').evaluate(el=>document.activeElement===el),true);
     await page.locator('#ops-command-query').fill('conexoes');
     await page.getByRole('option',{name:/Mapa de conexões/}).click();
     assert.equal(await page.locator('#panel-graph').isVisible(),true);

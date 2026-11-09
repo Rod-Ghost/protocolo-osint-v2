@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from .catalog import SOURCES, list_sources, plan
+from .search_builder import BuilderError, build_search_plan
 from .detection import detect_type
 from .media import InvalidImage, MAX_BYTES, analyze
 from .store import get_store
@@ -108,6 +109,23 @@ def detect(payload:DetectRequest):
 @app.get('/api/v1/sources')
 def sources(kind:str|None=None,category:str|None=None,q:str|None=None):
     return {'sources':list_sources(kind,category,q),'total':len(SOURCES),'validation':'URLs de destinos externos não verificadas nesta execução'}
+
+class BuilderRequest(BaseModel):
+    value: str = Field(min_length=2, max_length=240)
+    source_ids: list[str] = Field(min_length=1, max_length=25)
+    kind: Literal["auto","free_text","username_candidate","email","domain","ip","url"] = "auto"
+    filters: dict = Field(default_factory=dict)
+
+
+@app.post("/api/v1/search/builder")
+def custom_search_builder(payload: BuilderRequest):
+    """Build links only. Never fetch external results or store search targets."""
+    try:
+        return build_search_plan(payload.value, payload.source_ids,
+                                 kind=payload.kind, filters=payload.filters)
+    except BuilderError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
 
 @app.post('/api/v1/search/plan')
 def make_plan(payload:SearchRequest):

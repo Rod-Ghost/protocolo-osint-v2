@@ -40,8 +40,8 @@ def build_search_plan(value: str, source_ids: list[str], *,
         raise BuilderError("Informe um termo de pelo menos 2 caracteres.")
     if kind not in _ALLOWED_TYPES:
         raise BuilderError("Tipo de pesquisa não suportado.")
-    if not isinstance(source_ids, list) or not 1 <= len(source_ids) <= 25:
-        raise BuilderError("Selecione de 1 a 25 fontes.")
+    if not isinstance(source_ids, list) or not 1 <= len(source_ids) <= 60:
+        raise BuilderError("Selecione de 1 a 60 fontes.")
     if any(not isinstance(x, str) or len(x) > 60 for x in source_ids):
         raise BuilderError("Fonte inválida.")
     chosen = list(dict.fromkeys(source_ids))

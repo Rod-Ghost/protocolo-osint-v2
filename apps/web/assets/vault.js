@@ -28,6 +28,11 @@
     const id = () => cryptoApi.randomUUID ? cryptoApi.randomUUID() : base64(random(16)).replace(/[^\w]/g,'');
     const clone = item => JSON.parse(JSON.stringify(item));
     const now = () => new Date().toISOString();
+    // Notify same-tab UI without ever including decrypted case content in event payload.
+    const changed = () => {
+      if(typeof root.dispatchEvent === 'function' && typeof root.Event === 'function')
+        root.dispatchEvent(new root.Event('protocolo:vault-change'));
+    };
     const assertUnlocked = () => {
       if (!state || !key) throw new Error('Desbloqueie o cofre primeiro.');
     };
@@ -46,7 +51,7 @@
       const iv = random(12);
       const cipher = new Uint8Array(await cryptoApi.subtle.encrypt({name:'AES-GCM',iv},key,bytes));
       const record = JSON.stringify({version:1,iterations:ITERATIONS,salt:base64(salt),iv:base64(iv),data:base64(cipher)});
-      storage.setItem(STORAGE_KEY,record);lastRaw=record;
+      storage.setItem(STORAGE_KEY,record);lastRaw=record;changed();
     }
     let vaultSalt = null;
     return {
@@ -66,9 +71,9 @@
           if (payload.schema!==1||!Array.isArray(payload.cases))throw new Error('Formato inválido.');
           state=payload;key=candidate;vaultSalt=unbase64(record.salt);lastRaw=raw;
         } catch{state=null;key=null;vaultSalt=null;throw new Error('Senha incorreta ou conteúdo do cofre corrompido.');}
-        return this.status();
+        changed();return this.status();
       },
-      lock(){key=null;state=null;vaultSalt=null;lastRaw=null;return this.status();},
+      lock(){key=null;state=null;vaultSalt=null;lastRaw=null;changed();return this.status();},
       async summary(){assertUnlocked();return {cases:state.cases.length,evidence:state.cases.reduce((n,c)=>n+c.evidence.length,0)};},
       async listCases(){assertUnlocked();return state.cases.map(c=>({id:c.id,title:c.title,description:c.description,created_at:c.created_at,evidence_count:c.evidence.length})).reverse();},
       async getCase(caseId){assertUnlocked();const c=state.cases.find(c=>c.id===caseId);return c?clone(c):null;},

@@ -49,6 +49,11 @@ jobs:
       - run: node --check apps/web/assets/case-search-builder.js
       - run: node --check public/assets/case-search-builder.js
       - run: node tests/test-case-search-builder.cjs
+      - run: node --check apps/web/assets/case-dashboard-model.js
+      - run: node --check public/assets/case-dashboard-model.js
+      - run: node --check apps/web/assets/dynamic-dashboard.js
+      - run: node --check public/assets/dynamic-dashboard.js
+      - run: node tests/test-dynamic-dashboard.cjs
       - run: node --check apps/web/assets/ai-bridge.js
       - run: node --check public/assets/ai-bridge.js
       - run: node --check apps/web/assets/ai-workspace.js

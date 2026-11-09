@@ -261,7 +261,41 @@
   $('#cb-save',block).addEventListener('click',savePlan);
   $('#cb-library-refresh',caseBlock).addEventListener('click',()=>loadCases().then(renderLibrary).catch(e=>library.textContent=e.message));
   // Manual refresh only: do not poll people or third-party services.
-  loadSources();
+  const sourcesReady=loadSources();
+  // Open a saved plan from dashboard reminders or activity. Only user clicks
+  // can trigger this: it does not poll third-party providers or start engines.
+  document.addEventListener('protocolo:open-plan',async event=>{
+    const caseId=event.detail?.caseId,planId=event.detail?.planId;
+    if(typeof caseId!=='string'||typeof planId!=='string'||!caseId||!planId)return;
+    if(!canSave()){
+      document.querySelector('#primary-nav [data-view="cases"]')?.click();
+      message.textContent='Desbloqueie seu cofre antes de abrir um plano salvo.';
+      return;
+    }
+    try{
+      await sourcesReady;
+      const c=await vault().getCase(caseId);
+      const plan=c?.search_plans?.find(p=>p.id===planId);
+      if(!plan)throw Error('Plano não encontrado no cofre atual.');
+      await loadCases();
+      state.caseId=caseId;
+      $('#cb-case',block).value=caseId;
+      $('#cb-query',block).value=plan.query;
+      $('#cb-kind',block).value=plan.kind||'auto';
+      $('#cb-site',block).value=plan.filters?.site||'';
+      $('#cb-file',block).value=plan.filters?.filetype||'';
+      $('#cb-exclude',block).value=plan.filters?.exclude||'';
+      $('#cb-exact',block).checked=plan.filters?.exact===true;
+      $('#cb-interval',block).value=String(plan.interval_days||0);
+      for(const input of list.querySelectorAll('input[type=checkbox]'))
+        input.checked=plan.source_ids.includes(input.value);
+      document.querySelector('#primary-nav [data-view="sources"]')?.click();
+      block.scrollIntoView({block:'start',behavior:'smooth'});
+      await generate();
+      state.editing={caseId,planId};
+      if(state.planned)message.textContent='Plano salvo aberto. Revise as fontes antes de consultar.';
+    }catch(error){message.textContent='Não foi possível abrir o plano: '+error.message}
+  });
   // Existing app vault may be unlocked after initial paint.
   $('#cb-case',block).addEventListener('focus',()=>loadCases().catch(e=>message.textContent=e.message));
 })();

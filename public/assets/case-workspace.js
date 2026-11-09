@@ -114,7 +114,7 @@
   function queueRefresh(){if(queued)return;queued=true;Promise.resolve().then(()=>{queued=false;refresh()})}
   new MutationObserver(queueRefresh).observe(legacy,{childList:true});
   new MutationObserver(queueRefresh).observe(caseList,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-  root.addEventListener('protocolo:vault-change',()=>{current=null;currentId='';queueRefresh()});
+  root.addEventListener('protocolo:vault-change',()=>{current=null;currentId='';render();queueRefresh()});
   root.addEventListener('protocolo:case-selected',queueRefresh);
   queueRefresh();
 })(typeof globalThis!=='undefined'?globalThis:this);

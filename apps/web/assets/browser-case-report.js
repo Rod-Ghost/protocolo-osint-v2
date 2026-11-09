@@ -47,6 +47,36 @@
         escapeMD(e.note||'Sem anotação'),
         '');
       const p=e.provenance;
+      const capture=e.capture;
+      if(capture?.format==='protocolo-osint/capture-v1'){
+        lines.push('**Tipo de preservação:** cópia de bytes originais, armazenada no cofre local.',
+          '',
+          '**Arquivo preservado:** '+escapeMD(capture.filename),
+          '',
+          '**Tipo MIME informado:** '+escapeMD(capture.mime_type),
+          '',
+          '**Quantidade de bytes:** '+escapeMD(capture.byte_count),
+          '',
+          '**SHA-256 dos BYTES originais:** '+escapeMD(capture.sha256_bytes),
+          '',
+          '**Método:** '+escapeMD(capture.method),
+          '',
+          '**Fonte URL:** '+escapeMD(capture.source_url||'Não informada'),
+          '',
+          '**Origem declarada manualmente:** '+
+            (capture.source_url_declared?'SIM — não verificada':'NÃO'),
+          '',
+          '**Status HTTP observado:** '+escapeMD(capture.http_status||'Não aplicável'),
+          '',
+          '**Horário do dispositivo:** '+escapeMD(capture.acquired_at_device),
+          '',
+          '**Verificação:** hash dos bytes reproduzível no cofre;',
+          ' não comprova autoria, servidor de origem ou carimbo de tempo independente.',
+          '',
+          'O relatório NÃO incorpora os bytes do arquivo. Exporte separadamente',
+          'a cópia e o manifesto e confira o SHA-256.',
+          '');
+      }
       if(p?.type==='engine_observation'){
         lines.push('**Procedência:** saída bruta de motor OSINT, revisada e registrada manualmente.',
           '',
@@ -92,7 +122,7 @@
       }
     }
     lines.push('## Limitações metodológicas','',
-      'Os metadados foram fornecidos pelo investigador. O hash de registro não comprova os bytes da fonte externa.',
+      'Os hashes de metadados dos registros comuns não comprovam bytes externos. Para capturas, o SHA-256 dos bytes pode ser revalidado localmente; isso não certifica autoria, origem nem timestamp.',
       '',
       'Esta exportação é texto não criptografado. Guarde em local seguro.',
       '',

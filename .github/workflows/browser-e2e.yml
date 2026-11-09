@@ -62,6 +62,7 @@ jobs:
           path: |
             test-artifacts/case-workspace-desktop.png
             test-artifacts/case-workspace-mobile.png
+            test-artifacts/case-workspace-mobile-locked.png
           if-no-files-found: ignore
           retention-days: 7
       - name: Save guided-flow screenshots

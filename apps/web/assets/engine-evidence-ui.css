@@ -1,0 +1,17 @@
+/* Opt-in OSINT result review; consistent with existing hosted-workflow themes. */
+.engine-review{margin:10px 0 0;border:1px solid rgba(161,178,200,.25);border-radius:10px;padding:12px;background:rgba(12,16,25,.75)}
+.engine-review summary{cursor:pointer;font-weight:670;font-size:.84rem;color:#ffb0be}
+.engine-review-warning{font-size:.77rem;line-height:1.5;color:#b9c6d6;margin:10px 0}
+.engine-review-list{max-height:240px;overflow-y:auto;border:1px solid rgba(165,180,201,.18);border-radius:7px;display:flex;flex-direction:column;gap:4px;padding:6px}
+.engine-review-row{display:flex;align-items:flex-start;gap:8px;padding:7px;border-bottom:1px solid rgba(165,180,201,.12);cursor:pointer;min-width:0}
+.engine-review-row:last-child{border-bottom:0}
+.engine-review-row input[type=checkbox],.engine-review-consent input[type=checkbox]{appearance:auto!important;width:18px!important;height:18px!important;min-width:18px;flex:0 0 18px;margin:1px 0 0!important;accent-color:#f25170}
+.engine-review-raw{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.75rem;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;flex:1}
+.engine-review-controls{display:flex;flex-direction:column;gap:11px;margin-top:12px}
+.engine-review-controls>label:not(.engine-review-consent){display:flex;flex-direction:column;gap:6px;font-size:.78rem;font-weight:600}
+.engine-review-controls select,.engine-review-controls textarea{width:100%;min-width:0;border:1px solid rgba(163,178,200,.3);border-radius:7px;padding:9px;background:#121722;color:#f5f6f7}
+.engine-review-actions{display:flex;flex-wrap:wrap;gap:7px}
+.engine-review-actions button{font-size:.72rem}
+.engine-review-consent{display:flex;align-items:flex-start;gap:8px;line-height:1.45;font-size:.75rem;color:#c6d3df}
+.engine-review-feedback{font-size:.75rem;color:#c5d5e6;margin:2px 0}
+@media(max-width:550px){.engine-review{padding:9px}.engine-review-actions button{flex:1 1 125px}}

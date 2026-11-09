@@ -112,7 +112,7 @@ def sources(kind:str|None=None,category:str|None=None,q:str|None=None):
 
 class BuilderRequest(BaseModel):
     value: str = Field(min_length=2, max_length=240)
-    source_ids: list[str] = Field(min_length=1, max_length=25)
+    source_ids: list[str] = Field(min_length=1, max_length=60)
     kind: Literal["auto","free_text","username_candidate","email","domain","ip","url"] = "auto"
     filters: dict = Field(default_factory=dict)
 

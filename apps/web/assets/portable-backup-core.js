@@ -63,7 +63,7 @@
     if(typeof value!=='string'||value.length>1800)return false;
     try{
       const u=new URL(value);
-      if(u.protocol!=='https:'||u.username||u.password||u.hash)return false;
+      if(u.protocol!=='https:'||u.username||u.password||(publicHost&&u.hash))return false;
       if(publicHost){
         const host=u.hostname.toLowerCase().replace(/\.$/,'');
         if((u.port&&u.port!=='443')||

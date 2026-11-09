@@ -59,6 +59,32 @@
     '<p id="wf-overview-note">Informe um alvo para iniciar. Nenhuma fonte externa foi consultada.</p></div>';
   form.before(overview);
 
+  // The independent source catalog is preserved, but progressively
+  // disclosed below the wizard to avoid two competing source lists.
+  const catalog=document.createElement('details');
+  catalog.className='wf-legacy-catalog';
+  catalog.id='wf-legacy-catalog';
+  const catalogSummary=node('summary','','Explorar catálogo completo de fontes');
+  catalog.append(catalogSummary,node('p','wf-stage-tip',
+    'Pesquisa independente e filtros originais. Links abrem provedores externos apenas por ação do investigador.'));
+  const sourcesPanel=document.querySelector('#panel-sources');
+  const catalogNodes=[
+    sourcesPanel.querySelector('.filter-row'),
+    sourcesPanel.querySelector('.results-head'),
+    sourcesPanel.querySelector('#source-results')
+  ].filter(Boolean);
+  if(catalogNodes.length===3){
+    host.after(catalog);
+    for(const original of catalogNodes)catalog.append(original);
+    // A legacy quick search should reveal its own results automatically.
+    document.querySelector('#global-search-form')?.addEventListener('submit',()=>{catalog.open=true;});
+    document.querySelector('#source-search-form')?.addEventListener('submit',()=>{catalog.open=true;});
+    sourcesPanel.querySelectorAll('[data-query]').forEach(button=>
+      button.addEventListener('click',()=>{catalog.open=true;}));
+    document.querySelectorAll('#panel-dashboard [data-query]').forEach(button=>
+      button.addEventListener('click',()=>{catalog.open=true;}));
+  }
+
   const flow=node('div','wf-body');
   const stage=steps.map((entry,index)=>{
     const pane=node('section','wf-stage');
@@ -173,7 +199,10 @@
     next.textContent=state.step===2?'Continuar para o caso':'Continuar';
     for(const mode of ['guided','advanced'])
       $('#wf-mode-'+mode).setAttribute('aria-pressed',String(state.mode===mode));
-    if(state.mode==='advanced')details.open=true;
+    if(state.mode==='advanced'){
+      details.open=true;
+      if(catalog.isConnected)catalog.open=true;
+    }
     refresh();
   }
   function changeStep(step,{focus=false}={}){

@@ -56,6 +56,23 @@
       checkDepth(v,depth+1,quota);
     }
   }
+  // Imported archive contents are untrusted, even if the envelope decrypts:
+  // rendered links must never allow javascript:, file:, internal hosts or credentials.
+  function allowedSource(value,{publicHost=false}={}){
+    if(value==null||value==='')return true;
+    if(typeof value!=='string'||value.length>1800)return false;
+    try{
+      const u=new URL(value);
+      if(u.protocol!=='https:'||u.username||u.password||u.hash)return false;
+      if(publicHost){
+        const host=u.hostname.toLowerCase().replace(/\.$/,'');
+        if((u.port&&u.port!=='443')||
+          !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/i.test(host)||
+          /\.(local|localhost|internal|test|invalid)$/.test(host))return false;
+      }
+      return true;
+    }catch{return false}
+  }
   async function validateCases(cases,cryptoApi){
     cryptoReady(cryptoApi);
     if(!Array.isArray(cases)||cases.length>150)
@@ -80,6 +97,7 @@
           typeof e.title!=='string'||e.title.length>180||
           (e.case_id!=null&&e.case_id!==c.id)||
           (typeof e.kind!=='string'||!['note','reference','capture'].includes(e.kind))||
+          !allowedSource(e.url,{publicHost:e.kind==='capture'})||
           (e.sha256!=null&&(typeof e.sha256!=='string'||!HEX.test(e.sha256))))
           throw Error('Registro de evidência inválido em um caso do backup.');
         if(evidences.has(e.id))throw Error('Registro de evidência duplicado no backup.');
@@ -87,6 +105,8 @@
         if(e.kind==='capture'){
           const p=e.capture;
           if(!p||p.format!=='protocolo-osint/capture-v1'||
+            !allowedSource(p.source_url,{publicHost:true})||
+            (p.source_url!=null&&p.source_url!==''&&e.url!==p.source_url)||
             typeof p.bytes_base64!=='string'||
             typeof p.sha256_bytes!=='string'||!HEX.test(p.sha256_bytes)||
             !Number.isSafeInteger(p.byte_count)||p.byte_count<1||p.byte_count>192*1024)

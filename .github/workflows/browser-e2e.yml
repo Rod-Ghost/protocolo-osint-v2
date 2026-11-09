@@ -8,6 +8,11 @@ on:
       - 'tests/browser-capture-flow.cjs'
       - 'tests/browser-mission-shell.cjs'
       - 'tests/browser-guided-workflow.cjs'
+      - 'tests/browser-case-workspace.cjs'
+      - 'apps/web/assets/case-workspace.js'
+      - 'apps/web/assets/case-workspace.css'
+      - 'public/assets/case-workspace.js'
+      - 'public/assets/case-workspace.css'
       - 'apps/web/assets/guided-search-workflow.js'
       - 'apps/web/assets/guided-search-workflow.css'
       - 'public/assets/guided-search-workflow.js'
@@ -47,6 +52,18 @@ jobs:
         run: node tests/browser-mission-shell.cjs
       - name: Guided search workflow with local cases and mock sources
         run: node tests/browser-guided-workflow.cjs
+      - name: Case workspace encrypted vault and responsive tabs
+        run: node tests/browser-case-workspace.cjs
+      - name: Save case workspace review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: case-workspace-ux-review
+          path: |
+            test-artifacts/case-workspace-desktop.png
+            test-artifacts/case-workspace-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save guided-flow screenshots
         if: always()
         uses: actions/upload-artifact@v4

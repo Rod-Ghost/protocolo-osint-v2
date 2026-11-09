@@ -82,6 +82,15 @@ async function run(){
 
     await page.locator('#primary-nav [data-view="sources"]').click();
     await page.locator('.case-builder.wf-enabled').waitFor();
+    const legacyCatalog=page.locator('#wf-legacy-catalog');
+    await legacyCatalog.waitFor();
+    assert.equal(await legacyCatalog.getAttribute('open'),null,
+      'Original source catalog must start collapsed in guided mode');
+    await legacyCatalog.locator('summary').click();
+    assert.equal(await page.locator('#source-results').isVisible(),true,
+      'Original source explorer must remain accessible on demand');
+    await legacyCatalog.locator('summary').click();
+    assert.equal(await page.locator('#source-results').isVisible(),false);
     assert.equal(await page.locator('#wf-mode-guided').getAttribute('aria-pressed'),'true');
     assert.equal(await page.locator('.wf-stage[data-wf-stage="0"]').isVisible(),true);
     assert.equal(await page.locator('.wf-stage[data-wf-stage="1"]').isVisible(),false);
@@ -176,6 +185,19 @@ async function run(){
     assert.equal(await page.locator('#cb-query').inputValue(),'example.org');
 
     await page.setViewportSize({width:390,height:844});
+    // Wait for the real sidebar transition before taking a mobile screenshot:
+    // a mid-animation frame is not an honest representation of the design.
+    await page.waitForTimeout(450);
+    const mobileGeometry=await page.evaluate(()=>{
+      const drawer=document.querySelector('#app-sidebar').getBoundingClientRect();
+      return {drawerRight:drawer.right,width:innerWidth,
+        documentWidth:document.documentElement.scrollWidth,
+        open:document.querySelector('#app-sidebar').classList.contains('open')};
+    });
+    assert.equal(mobileGeometry.open,false,'Mobile drawer unexpectedly open');
+    assert(mobileGeometry.drawerRight<=1,'Mobile drawer covers the page: '+JSON.stringify(mobileGeometry));
+    assert(mobileGeometry.documentWidth<=mobileGeometry.width+4,
+      'Page scrolls horizontally on mobile: '+JSON.stringify(mobileGeometry));
     await page.screenshot({path:'test-artifacts/workflow-guided-mobile.png',fullPage:false});
     assert.equal(thirdParty.length,0,'External network request: '+thirdParty.join(', '));
     assert.equal(pageErrors.length,0,'Browser errors: '+pageErrors.join('; '));

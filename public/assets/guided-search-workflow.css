@@ -172,3 +172,18 @@
   .wf-type-card{transition:none!important}
   .wf-type-card:hover{transform:none!important}
 }
+
+/* The original source explorer remains fully available, but does not compete
+   visually with the guided planning board unless explicitly opened. */
+.wf-legacy-catalog{margin:18px 0 23px;border:1px solid rgba(150,171,203,.24);
+  border-radius:12px;background:linear-gradient(155deg,rgba(17,22,33,.92),rgba(9,13,21,.84));
+  padding:0 17px 16px;min-width:0}
+.wf-legacy-catalog>summary{cursor:pointer;list-style-position:inside;padding:17px 3px;
+  color:#d6e1ef;font-size:.89rem;font-weight:710}
+.wf-legacy-catalog>summary:hover{color:#ffb2c0}
+.wf-legacy-catalog>summary:focus-visible{outline:2px solid #f9a3b5;outline-offset:4px}
+.wf-legacy-catalog[open]>summary{color:#ffbdc9;border-bottom:1px solid rgba(161,179,207,.17)}
+.wf-legacy-catalog>.wf-stage-tip{margin:14px 0}
+.wf-legacy-catalog>.filter-row{margin-top:15px}
+.wf-legacy-catalog>.results-head{margin-top:14px}
+.wf-legacy-catalog>.source-grid{margin-top:14px}

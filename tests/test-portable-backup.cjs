@@ -105,6 +105,31 @@ async function main(){
   repeated.cases.push(JSON.parse(JSON.stringify(repeated.cases[0])));
   await assert.rejects(core.encrypt(repeated,pass,webcrypto),/IDs de casos duplicados/);
 
+  // An authenticated (correct-password) archive is still UNTRUSTED input:
+  // never restore script URLs, credential-bearing links or private captures
+  // which could become active links when a case is displayed.
+  const unsafeReference=JSON.parse(JSON.stringify(before));
+  unsafeReference.cases[0].evidence[1].url='javascript:alert(1)';
+  await assert.rejects(core.validateCases(unsafeReference.cases,webcrypto),
+    /Registro de evidência inválido/);
+  const unsafeUrl=JSON.parse(JSON.stringify(before));
+  unsafeUrl.cases[0].evidence[0].url='https://127.0.0.1/private';
+  await assert.rejects(core.validateCases(unsafeUrl.cases,webcrypto),
+    /Registro de evidência inválido/);
+  const unsafeCaptured=JSON.parse(JSON.stringify(before));
+  unsafeCaptured.cases[0].evidence[0].capture.source_url='https://user:password@example.org/file';
+  await assert.rejects(core.validateCases(unsafeCaptured.cases,webcrypto),
+    /Captura do backup sem manifesto íntegro/);
+  const unsafeMismatch=JSON.parse(JSON.stringify(before));
+  unsafeMismatch.cases[0].evidence[0].capture.source_url='https://example.org/other';
+  await assert.rejects(core.validateCases(unsafeMismatch.cases,webcrypto),
+    /Captura do backup sem manifesto íntegro/);
+
+  // Legacy reference bookmarks using HTTPS fragments remain importable.
+  const bookmark=JSON.parse(JSON.stringify(before));
+  bookmark.cases[0].evidence[1].url='https://example.org/docs#chapter';
+  await core.validateCases(bookmark.cases,webcrypto);
+
   // Quota failures must be atomic: keep original encrypted data and
   // in-memory case state; never partially import.
   const quotaStore=mockStore(),quota=createVault(quotaStore,webcrypto);

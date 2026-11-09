@@ -349,9 +349,17 @@ async function analyzeImage(){
     toast('Análise concluída sem envio a serviços externos.');await loadSummary();
   }catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.innerHTML='Analisar imagem <span data-icon="arrow-right"></span>';icons(btn)}
 }
-async function drawGraph(){const id=$('#graph-case').value;if(!id){$('#graph-canvas').innerHTML='<div class="empty-state"><span data-icon="network"></span><h3>Um mapa para cada investigação.</h3><p>Selecione um caso para visualizar vínculos documentados.</p></div>';icons($('#graph-canvas'));return}
+async function drawGraph(){
+  if((hostedPreview||staticPreview)&&!vaultReady()){
+    $('#graph-canvas').replaceChildren();return;
+  }
+  const id=$('#graph-case').value;if(!id){$('#graph-canvas').innerHTML='<div class="empty-state"><span data-icon="network"></span><h3>Um mapa para cada investigação.</h3><p>Selecione um caso para visualizar vínculos documentados.</p></div>';icons($('#graph-canvas'));return}
  try{
- const data=await api(`/api/v1/cases/${encodeURIComponent(id)}/graph`);const nodes=data.nodes.slice(0,31);const center={x:420,y:220};const rest=nodes.slice(1);const positions=new Map([[nodes[0].id,center]]);
+ const data=await api(`/api/v1/cases/${encodeURIComponent(id)}/graph`);if(((hostedPreview||staticPreview)&&!vaultReady())||$('#graph-case').value!==id){
+    // In-flight graph loading must never recreate decrypted SVG after lock.
+    $('#graph-canvas').replaceChildren();return;
+  }
+  const nodes=data.nodes.slice(0,31);const center={x:420,y:220};const rest=nodes.slice(1);const positions=new Map([[nodes[0].id,center]]);
  rest.forEach((n,i)=>{const a=(i/rest.length)*Math.PI*2-Math.PI/2;const radius=rest.length>10?175:148;positions.set(n.id,{x:center.x+Math.cos(a)*radius,y:center.y+Math.sin(a)*radius})});
  const lines=rest.map(n=>{const p=positions.get(n.id);return `<line x1="${center.x}" y1="${center.y}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"/>`}).join('');
  const dots=nodes.map((n,i)=>{const p=positions.get(n.id);const radius=i===0?25:13;const label=esc(n.label.length>27?n.label.slice(0,25)+'…':n.label);return `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${radius}" fill="${i===0?'#56e2c8':'#9da2f4'}"/><text x="${p.x.toFixed(1)}" y="${(p.y+radius+18).toFixed(1)}" text-anchor="middle">${label}</text></g>`}).join('');
@@ -412,7 +420,7 @@ function bind(){
   if(staticPreview||hostedPreview){
     vaultPanel();
     $('#vault-form').addEventListener('submit',onVaultSubmit);
-    $('#vault-lock').addEventListener('click',()=>{browserVault.lock();state.activeCase=null;vaultPanel();refreshCases();refreshCaseSelects();loadSummary();toast('Cofre bloqueado.');});
+    $('#vault-lock').addEventListener('click',()=>{browserVault.lock();state.activeCase=null;$('#graph-canvas').replaceChildren();vaultPanel();refreshCases();refreshCaseSelects();loadSummary();toast('Cofre bloqueado.');});
     $('#vault-backup').addEventListener('click',async()=>{try{downloadLocalJSON('protocolo-osint-backup.json',await browserVault.exportAll());toast('Backup JSON em texto claro exportado. Guarde em local seguro.')}catch(err){toast(err.message,true)}});
   }else{$('#vault-gate').hidden=true;}
   $('#live-provider').addEventListener('change',liveProviderHint);

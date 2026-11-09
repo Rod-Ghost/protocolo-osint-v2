@@ -59,6 +59,7 @@ async function main(){
     await page.locator('#cap-file').setInputFiles({
       name:'laboratorio.txt',mimeType:'text/plain',buffer:sample
     });
+    await page.locator('#cap-declared').fill('https://example.org/documento-laboratorio');
     await page.locator('#cap-note').fill('Arquivo fictício autorizado');
     await page.locator('#cap-consent').check();
     await page.locator('#cap-submit').click();
@@ -89,12 +90,51 @@ async function main(){
     assert(markdown.includes('**SHA-256 dos BYTES originais:** '+hash));
     assert(!markdown.includes(sample.toString('base64')));
 
+    // Evidence-backed graph E2E: two records share only a documented
+    // hostname, never an inferred identity or user account.
+    await page.evaluate(async()=>{
+      const list=await browserVault.listCases();
+      await browserVault.addEvidence(list[0].id,{
+        kind:'reference',title:'Segunda referência pública fictícia',
+        url:'https://example.org/outro-documento',
+        note:'Somente observável textual do hostname'
+      });
+    });
+    await page.locator('#primary-nav [data-view="graph"]').click();
+    await page.locator('#graph-case').selectOption({label:'Caso E2E de captura de arquivo'});
+    await page.locator('#eg-visual svg').waitFor({timeout:15000});
+    assert((await page.locator('#eg-stats').innerText()).includes('2 registros'));
+    await page.locator('#eg-type').selectOption('domain');
+    await page.locator('#eg-shared-only').check();
+    await page.locator('#eg-visual .eg-repeated-button').first().waitFor();
+    assert((await page.locator('#eg-visual .eg-repeated-button').first().innerText())
+      .includes('2 registros'));
+    await page.locator('#eg-visual .eg-repeated-button').first().click();
+    assert((await page.locator('#eg-detail').innerText()).includes('Segunda referência pública fictícia'));
+    assert((await page.locator('#eg-detail').innerText()).includes('Captura de arquivo'));
+    // Explicit plaintext export is user-confirmed; it must not leak binary payloads.
+    const graphExport=page.waitForEvent('download');
+    await page.locator('#eg-export').click();
+    const jsonDownload=await graphExport;
+    const exported=JSON.parse(readFileSync(await jsonDownload.path(),'utf8'));
+    assert.equal(exported.format,'protocolo-osint/evidence-graph-v1');
+    assert.equal(exported.stats.shared,1);
+    assert(exported.edges.every(e=>e.evidence_id));
+    assert(!JSON.stringify(exported).includes('bytes_base64'));
+    await page.locator('#primary-nav [data-view="cases"]').click();
+
     // Never leak encrypted payload to the public server or view it after lock.
     const cipher=await page.evaluate(()=>localStorage.getItem('protocolo-osint:vault:1'));
     assert(cipher&&!cipher.includes('laboratorio.txt')&&!cipher.includes('Arquivo de laboratório'));
     await page.locator('#vault-lock').click();
     await page.locator('#cap-message').getByText('cofre está bloqueado',{exact:false}).waitFor();
     assert.equal(await page.locator('#cap-items .cap-item').count(),0);
+    await page.locator('#primary-nav [data-view="graph"]').click();
+    await page.locator('#eg-visual').getByText('Desbloqueie o cofre',{exact:false}).waitFor();
+    assert(!(await page.locator('#eg-detail').innerText()).includes('example.org'),
+      'Graph retained sensitive case detail after vault lock');
+    assert.equal(await page.locator('#graph-canvas svg').count(),0,
+      'Legacy graph must clear sensitive SVG labels on vault lock');
     assert.equal(errors.length,0,errors.join('; '));
     console.log('Capture E2E PASS: local file, real SHA, encrypted case, original download, report and lock.');
   }finally{

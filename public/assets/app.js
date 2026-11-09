@@ -396,4 +396,15 @@ function bind(){
   $('#mobile-menu').addEventListener('click',()=>$('.sidebar').classList.toggle('open'));
   $('#today-label').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase();
 }
+// Internal navigation only: dashboard widgets never read or upload case data.
+document.addEventListener('protocolo:open-case',async event=>{
+  const caseId=event.detail?.caseId;
+  if(typeof caseId!=='string'||!caseId||caseId.length>120)return;
+  if((hostedPreview||staticPreview)&&!vaultReady()){
+    go('cases');toast('Desbloqueie o cofre para abrir este caso.',true);return;
+  }
+  go('cases');
+  try{await refreshCases();await loadCase(caseId)}
+  catch(error){toast('Caso indisponível: '+error.message,true)}
+});
 bind();loadSummary();loadSources();

@@ -85,8 +85,8 @@
         const title=String(entry.title||'').trim(),query=String(entry.query||'').trim();
         if(title.length<2||title.length>120||query.length<2||query.length>240)
           throw new Error('Título ou termo do plano inválido.');
-        if(!Array.isArray(entry.source_ids)||!entry.source_ids.length||entry.source_ids.length>25)
-          throw new Error('Escolha entre 1 e 25 fontes por plano.');
+        if(!Array.isArray(entry.source_ids)||!entry.source_ids.length||entry.source_ids.length>60)
+          throw new Error('Escolha entre 1 e 60 fontes por plano.');
         const sourceIds=[...new Set(entry.source_ids)];
         if(sourceIds.some(x=>typeof x!=='string'||!/^[a-z0-9-]{1,60}$/.test(x)))
           throw new Error('Identificador de fonte inválido.');

@@ -47,6 +47,22 @@
         escapeMD(e.note||'Sem anotação'),
         '');
     });
+    if(Array.isArray(caseData.search_plans)&&caseData.search_plans.length){
+      lines.push('## Planos de busca e revisões manuais','',
+        'Consultas planejadas não representam fontes efetivamente consultadas ou resultados obtidos.','');
+      for(const p of caseData.search_plans.slice(0,30)){
+        lines.push('### '+escapeMD(p.title),'',
+          '**Consulta:** '+escapeMD(p.query),'',
+          '**Fontes selecionadas:** '+escapeMD((p.source_ids||[]).join(', ')),'',
+          '**Periodicidade de revisão:** '+escapeMD(p.interval_days||0)+' dias (manual)','');
+        for(const r of (p.reviews||[]).slice(-20)){
+          lines.push('- '+escapeMD(r.observed_at)+
+            ' | Contagem anotada (não verificada): '+escapeMD(r.count??'não informada')+
+            ' | Variação declarada: '+escapeMD(r.delta??'não calculada')+
+            ' | Observação: '+escapeMD(r.note||''));}
+        lines.push('');
+      }
+    }
     lines.push('## Limitações metodológicas','',
       'Os metadados foram fornecidos pelo investigador. O hash de registro não comprova os bytes da fonte externa.',
       '',

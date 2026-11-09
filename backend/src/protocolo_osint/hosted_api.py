@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .catalog import SOURCES, list_sources, plan
+from .search_builder import BuilderError, build_search_plan
 from .investigation_lab import analyze as lab_analyze, OPERATIONS as LAB_OPERATIONS
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
@@ -117,6 +118,23 @@ def sources(kind: str | None = None, category: str | None = None, q: str | None 
 def providers():
     return {"providers": [{"id": key, **data, "status": "configured"} for key, data in PROVIDERS.items()],
             "notice": "Requer consentimento de consulta; não é varredura automática."}
+
+
+class BuilderRequest(BaseModel):
+    value: str = Field(min_length=2, max_length=240)
+    source_ids: list[str] = Field(min_length=1, max_length=60)
+    kind: Literal["auto","free_text","username_candidate","email","domain","ip","url"] = "auto"
+    filters: dict = Field(default_factory=dict)
+
+
+@app.post("/api/v1/search/builder")
+def custom_search_builder(payload: BuilderRequest):
+    """Build links only. Never fetch external results or store search targets."""
+    try:
+        return build_search_plan(payload.value, payload.source_ids,
+                                 kind=payload.kind, filters=payload.filters)
+    except BuilderError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.post("/api/v1/detect")

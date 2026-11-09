@@ -36,7 +36,9 @@
   '<button type="button" role="tab" id="cw-tab-plans" aria-controls="cw-pane" data-cw-tab="plans" aria-selected="false" tabindex="-1">Planos</button></div>'+
   '<div id="cw-pane" role="tabpanel" tabindex="0" aria-labelledby="cw-tab-overview" aria-live="polite"><p class="cw-empty">Selecione um caso na lista.</p></div>'+
   '<p class="cw-footnote">Histórico local, não monitoramento externo. Vínculos documentais não comprovam identidade ou autenticidade. Os controles originais de registros, capturas e relatórios permanecem abaixo.</p>';
-  legacy.before(workspace);
+  const layout=panel.querySelector('.case-layout');
+  if(!layout)return;
+  layout.before(workspace);
   const title=workspace.querySelector('#cw-title'),subtitle=workspace.querySelector('#cw-subtitle'),pane=workspace.querySelector('#cw-pane');
   const tabs=[...workspace.querySelectorAll('[data-cw-tab]')];
   let active='overview',currentId='',current=null,sequence=0;

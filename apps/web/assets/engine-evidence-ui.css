@@ -15,3 +15,10 @@
 .engine-review-consent{display:flex;align-items:flex-start;gap:8px;line-height:1.45;font-size:.75rem;color:#c6d3df}
 .engine-review-feedback{font-size:.75rem;color:#c5d5e6;margin:2px 0}
 @media(max-width:550px){.engine-review{padding:9px}.engine-review-actions button{flex:1 1 125px}}
+
+/* Typed provenance cards inside the existing case evidence list. */
+.engine-evidence-trace{display:block;color:#f9a1b2;font-size:.74rem;margin-top:5px}
+.engine-evidence-details{margin-top:8px;padding:9px;border:1px solid rgba(158,175,200,.2);border-radius:8px}
+.engine-evidence-details summary{cursor:pointer;font-size:.75rem;font-weight:640}
+.engine-evidence-details p,.engine-evidence-details small{font-size:.73rem;line-height:1.5;overflow-wrap:anywhere}
+.engine-evidence-details pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.73rem;max-height:180px;overflow:auto;background:rgba(5,10,18,.45);padding:9px;border-radius:6px}

@@ -224,6 +224,99 @@
         evidence.sha256=await digest(coder.encode(JSON.stringify(evidence)));
         c.evidence.push(evidence);await save(vaultSalt);return clone(evidence);
       },
+      async addCapture(caseId,entry){
+        // A browser-created snapshot of BYTES, not a notarized source or trusted time.
+        assertUnlocked();
+        const c=state.cases.find(item=>item.id===caseId);
+        if(!c)throw new Error('Caso não encontrado.');
+        if(!entry||typeof entry!=='object'||!(entry.bytes instanceof Uint8Array)||
+           entry.bytes.length<1||entry.bytes.length>192*1024)
+          throw new Error('Captura deve conter de 1 byte a 192 KiB.');
+        const mime=String(entry.mime_type||'').toLowerCase().split(';')[0].trim();
+        const allowed=new Set(['text/html','text/plain','text/csv','text/xml',
+          'application/xml','application/json','application/pdf','image/png',
+          'image/jpeg','image/webp']);
+        if(!allowed.has(mime))throw new Error('Formato de captura não suportado.');
+        const filename=String(entry.filename||'').trim();
+        if(!filename||filename.length>140||/[\x00-\x1f\x7f/\\]/.test(filename))
+          throw new Error('Nome do arquivo inválido.');
+        const method=entry.method;
+        if(!['user-file','cors-https'].includes(method))
+          throw new Error('Método de captura inválido.');
+        const note=String(entry.note||'').trim();
+        if(note.length>1200)throw new Error('Observação longa demais.');
+        const source=entry.source_url==null?'':String(entry.source_url).trim();
+        if(source){
+          let u;
+          try{u=new URL(source)}catch{throw new Error('Fonte HTTPS inválida.')}
+          const host=u.hostname.toLowerCase().replace(/\.$/,'');
+          if(u.protocol!=='https:'||u.username||u.password||
+             (u.port&&u.port!=='443')||
+             !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/i.test(host)||
+             source.length>1800||u.hash||/\.(?:local|test|internal|invalid|localhost)$/i.test(host))
+            throw new Error('Fonte deve ser HTTPS pública sem credenciais, fragmentos ou porta especial.');
+        }
+        if(method==='cors-https'&&(!source||entry.http_status!==200))
+          throw new Error('A resposta CORS deve ter origem pública e status HTTP 200.');
+        if(c.evidence.length>=250)throw new Error('Caso atingiu o limite de 250 registros.');
+        const raw=new Uint8Array(entry.bytes);
+        const rawHash=await digest(raw);
+        const existing=c.evidence.find(e=>e.capture?.sha256_bytes===rawHash);
+        if(existing)return {saved:false,duplicate_id:existing.id,sha256_bytes:rawHash};
+        const at=now();
+        const capture={
+          format:'protocolo-osint/capture-v1',
+          filename,mime_type:mime,byte_count:raw.length,sha256_bytes:rawHash,
+          bytes_base64:base64(raw),method,
+          source_url:source||null,
+          source_url_declared:method==='user-file'&&!!source,
+          http_status:method==='cors-https'?200:null,
+          acquired_at_device:at,integrity_status:'not_independently_verified'
+        };
+        const evidence={
+          id:id(),case_id:caseId,kind:'capture',
+          title:('Captura de arquivo: '+filename).slice(0,180),
+          url:source||null,note,
+          created_at:at,capture
+        };
+        // Metadata hash and binary hash serve different purposes.
+        evidence.sha256=await digest(coder.encode(JSON.stringify(evidence)));
+        const original=clone(c.evidence);
+        c.evidence.push(evidence);
+        try{await save(vaultSalt)}catch(error){c.evidence=original;throw error}
+        return {saved:true,evidence_id:evidence.id,sha256_bytes:rawHash,
+          byte_count:raw.length,method};
+      },
+      async verifyCapture(caseId,evidenceId){
+        assertUnlocked();
+        const c=state.cases.find(item=>item.id===caseId);
+        const e=c?.evidence?.find(item=>item.id===evidenceId);
+        if(!e||e.kind!=='capture'||e.capture?.format!=='protocolo-osint/capture-v1')
+          throw new Error('Captura não encontrada.');
+        const meta=e.capture;
+        if(typeof meta.bytes_base64!=='string'||!/^[a-zA-Z0-9+/]+={0,2}$/.test(meta.bytes_base64)||
+           typeof meta.sha256_bytes!=='string'||!/^[a-f0-9]{64}$/.test(meta.sha256_bytes))
+          return {valid:false,reason:'Metadados de captura inconsistentes.'};
+        let raw;
+        try{raw=unbase64(meta.bytes_base64)}catch{
+          return {valid:false,reason:'Bytes codificados inválidos.'};
+        }
+        if(raw.length<1||raw.length>192*1024||raw.length!==meta.byte_count)
+          return {valid:false,reason:'Tamanho dos bytes diverge do manifesto.'};
+        const actual=await digest(raw);
+        if(actual!==meta.sha256_bytes)
+          return {valid:false,reason:'SHA-256 dos bytes não corresponde ao manifesto.',
+            expected:meta.sha256_bytes,actual};
+        return {valid:true,sha256_bytes:actual,byte_count:raw.length,
+          filename:meta.filename,mime_type:meta.mime_type,method:meta.method};
+      },
+      async getCaptureBytes(caseId,evidenceId){
+        const result=await this.verifyCapture(caseId,evidenceId);
+        if(!result.valid)throw new Error('Integridade da captura falhou: '+result.reason);
+        const c=state.cases.find(item=>item.id===caseId);
+        const e=c.evidence.find(item=>item.id===evidenceId);
+        return {...result,bytes:unbase64(e.capture.bytes_base64)};
+      },
       async addImage(caseId,filename,result){
         assertUnlocked();const c=state.cases.find(c=>c.id===caseId);if(!c)throw new Error('Caso não encontrado.');
         const distance = (x,y) => {

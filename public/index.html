@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="assets/investigation-lab.css" />
   <link rel="stylesheet" href="assets/case-reports.css" />
   <link rel="stylesheet" href="assets/ai-workspace.css" />
+  <link rel="stylesheet" href="assets/mission-shell.css" />
   <script defer src="assets/vault.js"></script>
   <script defer src="assets/app.js"></script>
   <script defer src="assets/engine-ui.js"></script>
@@ -49,14 +50,19 @@
   <script defer src="assets/browser-case-report.js"></script>
   <script defer src="assets/ai-bridge.js"></script>
   <script defer src="assets/ai-workspace.js"></script>
+  <script defer src="assets/mission-shell.js"></script>
 </head>
 <body data-runtime="hosted">
+  <a class="ops-skip-link" href="#app-main">Pular para o conteúdo principal</a>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Menu principal">
+    <aside class="sidebar" id="app-sidebar" aria-label="Menu principal">
+      <div class="ops-sidebar-header">
       <a class="identity" href="./" aria-label="Protocolo OSINT V2">
         <div class="identity-mark"><span>P</span></div>
         <div class="identity-text"><strong>PROTOCOLO</strong><span>OSINT <em>V2</em></span></div>
       </a>
+      <button type="button" id="sidebar-collapse-toggle" class="ops-collapse-button" aria-label="Recolher barra lateral" aria-controls="app-sidebar" aria-expanded="true" title="Recolher barra lateral"><span data-icon="menu"></span></button>
+      </div>
       <div class="workspace-tag"><span class="status-dot"></span> INVESTIGATION STUDIO</div>
       <div class="sidebar-divider"></div>
       <div class="nav-group-label">WORKSPACE</div>
@@ -79,10 +85,18 @@
       </div>
     </aside>
 
-    <main class="main-area">
+    <main class="main-area" id="app-main" tabindex="-1">
       <header class="topbar">
+        <div class="ops-topbar-left">
+        <button type="button" id="shell-sidebar-toggle" class="ops-top-toggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="app-sidebar" title="Recolher barra lateral"><span data-icon="menu"></span></button>
         <div class="breadcrumbs"><button class="mobile-menu" id="mobile-menu" aria-label="Abrir menu" type="button"><span data-icon="menu"></span></button><span>Workspace</span><span class="breadcrumb-slash">/</span><strong id="breadcrumb-current">Visão geral</strong></div>
+        </div>
+        <div class="ops-topbar-right">
+          <button type="button" id="shell-open-command" class="ops-command-trigger" aria-haspopup="dialog" aria-controls="ops-command-dialog"><span data-icon="search"></span><span>Navegar pelos módulos</span><kbd>Ctrl K</kbd></button>
+          <button type="button" id="shell-quick-case" class="ops-quick-case"><span data-icon="plus"></span><span>Novo caso</span></button>
+          <button type="button" id="shell-vault-indicator" class="ops-vault-chip" aria-label="Abrir Meus casos"><span class="ops-chip-dot"></span><span id="shell-vault-state">Cofre protegido</span></button>
         <div class="topbar-controls"><div class="topbar-meta"><span class="top-status"></span><span>OSINT STUDIO</span></div><span class="topbar-separator"></span><span class="topbar-version">PROTOCOLO / 2026</span><button class="icon-button theme-button" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema" type="button"><span data-icon="sun"></span></button><div class="profile-badge">PO</div></div>
+        </div>
       </header>
 
       <div class="content-wrap">
@@ -150,6 +164,17 @@
         <footer class="global-footer"><div>© Protocolo OSINT V2 · Pesquisa aberta com método</div><div>Resultados de buscas externas não verificados <span class="footer-bullet">•</span> v1.2.0</div></footer>
       </div>
     </main>
+  </div>
+  <div id="ops-nav-backdrop" class="ops-nav-backdrop" hidden></div>
+  <div id="ops-command-dialog" class="ops-command-layer" hidden>
+    <button type="button" class="ops-command-backdrop" id="ops-command-backdrop" aria-label="Fechar navegação rápida"></button>
+    <section class="ops-command-panel" role="dialog" aria-modal="true" aria-labelledby="ops-command-title" aria-describedby="ops-command-description">
+      <div class="ops-command-heading"><div><div class="eyebrow">CENTRAL DE COMANDO</div><h2 id="ops-command-title">Ir para um módulo</h2></div><button id="ops-command-close" type="button" aria-label="Fechar" class="ops-command-close">ESC</button></div>
+      <p id="ops-command-description">Pesquise um módulo do sistema. Essa busca é local e não consulta fontes externas.</p>
+      <label class="ops-command-search"><span data-icon="search"></span><span class="sr-only">Localizar módulo</span><input id="ops-command-query" type="search" autocomplete="off" spellcheck="false" placeholder="Ex.: casos, evidências, conexões, construtor…" /></label>
+      <div id="ops-command-results" class="ops-command-results" role="listbox" aria-label="Módulos disponíveis"></div>
+      <div class="ops-command-footer"><span>↑ ↓ para escolher · Enter para abrir</span><span>Esc para fechar</span></div>
+    </section>
   </div>
   <div id="toast" class="toast" aria-live="polite"></div>
 </body>

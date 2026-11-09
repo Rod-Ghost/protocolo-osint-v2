@@ -144,6 +144,25 @@ async function run(){
     await page.locator('#cb-generate').click();
     await page.locator('#cb-results .cb-count').getByText('links preparados',{exact:false}).waitFor();
     assert.equal(requests.at(-1).value,'example.com');
+    await page.locator('#cb-select').click();
+    assert.equal(await page.locator('#cb-save').isEnabled(),false,
+      'Bulk source selection did not invalidate stale prepared links');
+    assert.equal(await page.locator('#cb-results .cb-count').count(),0);
+    await page.locator('#cb-case').selectOption('');
+    await page.locator('#cb-case').selectOption({label:'Caso demonstrativo — investigação guiada'});
+    assert.equal(await page.locator('#cb-save').isEnabled(),false,
+      'Changing case incorrectly re-enabled a stale search plan');
+    await page.evaluate(()=>{
+      // A synthetic stale click confirms the original savePlan guard,
+      // independently of the wizard's disabled state.
+      const save=document.querySelector('#cb-save');
+      save.disabled=false;save.click();
+    });
+    await page.locator('#cb-state').getByText('O alvo, os filtros ou as fontes mudaram',{exact:false}).waitFor();
+    assert.equal((await page.evaluate(async()=>{
+      const items=await browserVault.listCases();
+      return (await browserVault.getCase(items[0].id)).search_plans.length;
+    })),1,'A changed plan was saved without regeneration');
 
     // A saved plan opened elsewhere should be visible in the guided result
     // stage, without triggering any external request or engine job.

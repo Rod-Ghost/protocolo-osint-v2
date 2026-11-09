@@ -232,6 +232,30 @@
   }
   form.addEventListener('input',changed);
   form.addEventListener('change',changed);
+  // The old "select visible" and "clear" buttons change checkbox.checked
+  // programmatically, without emitting native input/change events.
+  for(const control of ['#cb-select','#cb-clear']){
+    $(control).addEventListener('click',()=>{
+      if(state.prepared){
+        state.prepared=false;
+        save.disabled=true;
+        results.replaceChildren();
+        message.textContent='Seleção de fontes alterada. Prepare as consultas novamente antes de salvar.';
+      }
+      refresh();
+    });
+  }
+  // The original case selector may re-enable its save button on change.
+  // A stale configuration must never be saved just by switching cases.
+  $('#cb-case').addEventListener('change',()=>{
+    if(!state.prepared)save.disabled=true;
+    refresh();
+  });
+  form.addEventListener('submit',()=>{
+    state.prepared=false;
+    results.replaceChildren();
+    refresh();
+  });
   new MutationObserver(()=>{
     if(results.querySelector('.cb-count')?.textContent?.includes('links preparados')){
       state.prepared=true;

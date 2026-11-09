@@ -60,7 +60,7 @@
         signal:controller.signal,headers:{'Accept':
           'text/html,text/plain,application/pdf,application/json,image/png,image/jpeg,image/webp;q=0.9'}
       });
-      if(!response.ok)throw Error('Fonte retornou HTTP '+response.status+'.');
+      if(response.status!==200)throw Error('Fonte deve retornar HTTP 200 completo; recebido '+response.status+'.');
       if(response.type==='opaque'||response.type==='opaqueredirect')
         throw Error('Resposta não acessível devido às restrições do navegador.');
       if(response.url && validatePublicUrl(response.url)!==url)

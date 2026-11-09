@@ -20,7 +20,7 @@ def test_legacy_catalog_is_extended_not_replaced():
 
 
 def test_custom_builder_counts_links_not_results():
-    data = build_search_plan("rod.roldan", ["google", "github-users", "rdap", "google"])
+    data = build_search_plan("rod.roldan", ["google", "github-users", "rdap", "google"], kind="username_candidate")
     assert data["selected"] == 3
     assert data["total"] == 2
     assert {x["id"] for x in data["results"]} == {"google", "github-users"}

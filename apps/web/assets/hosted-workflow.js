@@ -160,7 +160,7 @@
       form.hidden=true;
     }
   }
-  function renderJobs(jobs) {
+  function renderJobs(jobs, context) {
     results.replaceChildren();
     return jobs.map(job => {
       const card=el("section","hosted-result");
@@ -169,15 +169,15 @@
       const dataNode=el("pre","hosted-records","Aguardando resultado do Daemon…");
       card.append(heading,stateNode,dataNode);
       results.append(card);
-      return {job,statusNode:stateNode,dataNode,done:false};
+      return {job,statusNode:stateNode,dataNode,element:card,context,done:false};
     });
   }
   async function pollJobs(cards) {
     // No continuous background polling or phantom progress. The queued
     // Daemon has timeouts, and pending tasks can wait behind other work.
     for(let i=0;i<60&&cards.some(item=>!item.done);i++){
-      await sleep(15000);
-      if(document.hidden) { i--; continue; }
+      if(i>0)await sleep(15000);
+      if(document.hidden) { await sleep(1200); i--; continue; }
       for(const card of cards) {
         if(card.done) continue;
         try {
@@ -201,6 +201,13 @@
               .catch(()=>{status.textContent="Cópia indisponível neste navegador.";});
           });
           card.dataNode.after(copy);
+          // Only completed CLI records, never errors or phantom/pending output,
+          // can be reviewed for import into the existing browser-local vault.
+          if(window.ProtocoloEngineFindings && window.ProtocoloEvidenceUI){
+            const observations=window.ProtocoloEngineFindings.normalize(
+              card.job,response,card.context);
+            if(observations.length)window.ProtocoloEvidenceUI.attach(card.element,observations);
+          }
         } catch(error){
           card.statusNode.textContent="Falha ao consultar: "+error.message;
           // Authentication or permission errors should not generate endless Blob reads.
@@ -229,7 +236,9 @@
         body:JSON.stringify({value,engine,target_kind,include_spiderfoot:include}),
       });
       if(!Array.isArray(response.jobs)||!response.jobs.length)throw Error("Nenhuma tarefa retornada.");
-      const cards=renderJobs(response.jobs);
+      const cards=renderJobs(response.jobs,{
+        target:response.normalized_target||value,kind:response.kind||target_kind
+      });
       status.textContent=response.jobs.length+" tarefas recebidas · Tipo: "+response.kind+
         " · Alvo usado: "+(response.normalized_target||value)+
         ". Resultados reais serão mostrados individualmente.";

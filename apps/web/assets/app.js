@@ -222,11 +222,29 @@ function renderCases(){
   icons($('#case-list'));
   if(state.activeCase){loadCase(state.activeCase)}
 }
+function engineEvidenceDetails(e){
+  const p=e?.provenance;
+  if(!p||p.type!=='engine_observation')return '';
+  const when=p.observed_at?new Date(p.observed_at).toLocaleString('pt-BR'):'Não fornecida pelo motor';
+  return '<small class="engine-evidence-trace">Motor: '+esc(p.engine)+
+    ' · Job: '+esc(p.job_id)+
+    ' · Verificação: NÃO VERIFICADO</small>'+
+    '<details class="engine-evidence-details"><summary>Procedência e saída original</summary>'+
+    '<p><strong>Alvo consultado:</strong> '+esc(p.target)+
+    ' · '+esc(p.target_kind||'auto')+'</p>'+
+    '<p><strong>Observação do motor:</strong> '+esc(when)+'</p>'+
+    '<p><strong>SHA-256 da linha registrada:</strong> '+esc(p.raw_sha256)+'</p>'+
+    '<p><strong>Ferramenta de origem:</strong> '+esc(p.tool_reference||'não informada')+
+    ' (referência do software, não confirmação da fonte remota)</p>'+
+    '<pre>'+esc(p.raw_record)+'</pre>'+
+    '<small>Selecionado manualmente; conteúdo e identidade não verificados independentemente.</small>'+
+    '</details>';
+}
 async function loadCase(id){
   try{
     const c=await api('/api/v1/cases/'+encodeURIComponent(id));state.activeCase=id;
     $$('.case-item').forEach(el=>el.classList.toggle('active',el.dataset.case===id));
-    $('#case-detail').innerHTML=`<div class="case-detail-top"><div><div class="eyebrow">INVESTIGAÇÃO ATIVA</div><h2>${esc(c.title)}</h2><p>${esc(c.description||'Sem descrição cadastrada.')}</p></div><a class="button ghost-button" href="/api/v1/cases/${encodeURIComponent(c.id)}/export" download="case-${esc(c.id)}.json"><span data-icon="download"></span> Exportar</a></div><div class="case-detail-subheading"><h3>Registros e referências</h3><span class="subtext">${c.evidence.length} registros</span></div><div>${c.evidence.length?c.evidence.map(e=>`<div class="evidence-item"><span data-icon="file-text"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.kind==='note'?'Nota local':'Referência externa')} · ${new Date(e.created_at).toLocaleString('pt-BR')}</small>${e.url?`<small><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir fonte original ↗</a></small>`:''}${e.note?`<small>${esc(e.note).slice(0,300)}</small>`:''}</div></div>`).join(''):'<div class="subtext">Ainda não há registros. Adicione referências documentadas abaixo.</div>'}</div><form id="evidence-form" class="evidence-form"><div class="eyebrow">ADICIONAR REGISTRO</div><input id="evidence-title" placeholder="Título ou descrição do achado" maxlength="180" minlength="2" required/><input id="evidence-url" type="url" placeholder="URL HTTPS da fonte (opcional)" maxlength="2000"/><textarea id="evidence-note" rows="2" maxlength="5000" placeholder="Observações, contexto e limites"></textarea><button class="button primary-button" type="submit"><span data-icon="plus"></span> Adicionar registro</button><small class="subtext">O hash protege os metadados do registro, não captura a página externa.</small></form>`;
+    $('#case-detail').innerHTML=`<div class="case-detail-top"><div><div class="eyebrow">INVESTIGAÇÃO ATIVA</div><h2>${esc(c.title)}</h2><p>${esc(c.description||'Sem descrição cadastrada.')}</p></div><a class="button ghost-button" href="/api/v1/cases/${encodeURIComponent(c.id)}/export" download="case-${esc(c.id)}.json"><span data-icon="download"></span> Exportar</a></div><div class="case-detail-subheading"><h3>Registros e referências</h3><span class="subtext">${c.evidence.length} registros</span></div><div>${c.evidence.length?c.evidence.map(e=>`<div class="evidence-item"><span data-icon="file-text"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.kind==='note'?'Nota local':'Referência externa')} · ${new Date(e.created_at).toLocaleString('pt-BR')}</small>${e.url?`<small><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir fonte original ↗</a></small>`:''}${e.note?`<small>${esc(e.note).slice(0,300)}</small>`:''}${engineEvidenceDetails(e)}</div></div>`).join(''):'<div class="subtext">Ainda não há registros. Adicione referências documentadas abaixo.</div>'}</div><form id="evidence-form" class="evidence-form"><div class="eyebrow">ADICIONAR REGISTRO</div><input id="evidence-title" placeholder="Título ou descrição do achado" maxlength="180" minlength="2" required/><input id="evidence-url" type="url" placeholder="URL HTTPS da fonte (opcional)" maxlength="2000"/><textarea id="evidence-note" rows="2" maxlength="5000" placeholder="Observações, contexto e limites"></textarea><button class="button primary-button" type="submit"><span data-icon="plus"></span> Adicionar registro</button><small class="subtext">O hash protege os metadados do registro, não captura a página externa.</small></form>`;
     icons($('#case-detail'));
     // Case metadata already reside in the browser vault (hosted) or local API.
     // Generate Markdown on the client without uploading decrypted case content.

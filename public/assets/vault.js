@@ -139,6 +139,79 @@
         await save(vaultSalt);
         return clone(review);
       },
+      async saveEngineFindings(caseId,entries,{reviewNote=''}={}){
+        // Explicit, local-only import of selected records after operator review.
+        // Nothing is sent to the worker, Vercel, or any third-party provider.
+        assertUnlocked();
+        const c=state.cases.find(item=>item.id===caseId);
+        if(!c)throw new Error('Caso não encontrado.');
+        if(!Array.isArray(entries)||entries.length<1||entries.length>25)
+          throw new Error('Selecione entre 1 e 25 observações por lote.');
+        if(typeof reviewNote!=='string'||reviewNote.trim().length>1000)
+          throw new Error('Anotação de revisão inválida (até 1.000 caracteres).');
+        const engines=new Set(['sherlock','maigret','subfinder','amass','spiderfoot']);
+        const jobPattern=/^[a-f0-9]{32}$/;
+        const allowedKinds=new Set(['','auto','username','domain','url','email','ip','cidr','asn','phone','name','bitcoin']);
+        const original=clone(c.evidence);
+        const imported=[],duplicates=[],batchKeys=new Set();
+        try{
+          for(const item of entries){
+            if(!item||typeof item!=='object'||!engines.has(item.engine)||
+               typeof item.job_id!=='string'||!jobPattern.test(item.job_id)||
+               typeof item.target!=='string'||item.target.length<2||item.target.length>253||
+               typeof item.raw_record!=='string'||!item.raw_record.trim()||
+               item.raw_record.length>400||
+               !allowedKinds.has(item.target_kind||'')||
+               item.verification!=='unverified'||item.capture_method!=='daemon-output')
+              throw new Error('Resultado do motor inválido ou sem procedência.');
+            const raw=item.raw_record.trim();
+            const rawSha=await digest(coder.encode(raw));
+            const unique=item.job_id+':'+rawSha;
+            if(batchKeys.has(unique)||c.evidence.some(e=>e.provenance?.type==='engine_observation'&&
+              e.provenance?.job_id===item.job_id&&e.provenance?.raw_sha256===rawSha)){
+              duplicates.push(unique);continue;
+            }
+            batchKeys.add(unique);
+            if(c.evidence.length>=250)throw new Error('Limite de 250 registros por caso. Exporte antes de ampliar.');
+            let observedAt=null;
+            if(item.observed_at!=null){
+              if(typeof item.observed_at!=='string'||!Number.isFinite(Date.parse(item.observed_at)))
+                throw new Error('Data observada inválida.');
+              observedAt=new Date(item.observed_at).toISOString();
+            }
+            const at=now();
+            const note=reviewNote.trim();
+            const record={
+              id:id(),case_id:caseId,kind:'note',
+              title:('Achado '+item.engine+': '+raw).slice(0,180),
+              url:null,
+              note:'Registro bruto do motor, salvo após seleção explícita. '+
+                'Identidade, autoria e origem remota NÃO verificadas.'+
+                (note?' Observação: '+note:''),
+              created_at:at,
+              provenance:{
+                type:'engine_observation',
+                engine:item.engine,job_id:item.job_id,target:item.target,
+                target_kind:item.target_kind||'auto',
+                raw_record:raw,raw_sha256:rawSha,
+                tool_reference:typeof item.tool_source==='string'?item.tool_source.slice(0,240):'',
+                observed_at:observedAt,saved_at:at,
+                capture_method:'daemon-output',
+                verification_status:'unverified',
+                review_status:'manually_selected_not_verified',
+                review_note:note
+              }
+            };
+            record.sha256=await digest(coder.encode(JSON.stringify(record)));
+            c.evidence.push(record);imported.push({id:record.id,sha256:record.sha256});
+          }
+          if(imported.length)await save(vaultSalt);
+        }catch(error){
+          c.evidence=original;
+          throw error;
+        }
+        return {saved:imported,duplicates:duplicates.length,case_id:caseId};
+      },
       async addEvidence(caseId,entry){
         assertUnlocked();const c=state.cases.find(c=>c.id===caseId);if(!c)throw new Error('Caso não encontrado.');
         const title=String(entry.title||'').trim(),kind=entry.kind||'note';

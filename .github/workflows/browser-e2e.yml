@@ -1,0 +1,39 @@
+name: Browser E2E - real public site and encrypted local cases
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/browser-e2e.yml'
+      - 'tests/browser-production-flow.cjs'
+      - 'tests/browser-evidence-flow.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-public-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runner (ephemeral CI only)
+        run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+      - name: Install Chromium and Linux dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Test public production flow without login or scans
+        env:
+          OSINT_E2E_URL: https://protocolo-osint-v2-nine.vercel.app
+        run: node tests/browser-production-flow.cjs
+      - name: Test mock OAuth and engine evidence in Chromium (offline)
+        run: node tests/browser-evidence-flow.cjs
+      - name: Save error-only screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-failure
+          path: test-artifacts/browser-smoke-failure.png
+          if-no-files-found: ignore
+          retention-days: 2

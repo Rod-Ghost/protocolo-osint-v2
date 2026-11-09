@@ -64,6 +64,13 @@ SOURCES: tuple[Source, ...] = (
     Source('crossref','Crossref','Documentos','Literatura científica e metadados',('free_text',),'https://search.crossref.org/?q={query}','file-text'),
     Source('openalex','OpenAlex','Documentos','Pesquisa acadêmica aberta',('free_text',),'https://openalex.org/works?filter=default.search%3A{query}','file-text'),
     Source('google-pdf','Documentos PDF','Documentos','Arquivos PDF públicos indexados',('free_text','domain'),'https://www.google.com/search?q=filetype%3Apdf+{query}','file-text'),
+    Source("startpage","Startpage","Buscadores","Pesquisa web alternativa; links externos não verificados",('free_text','username_candidate','email','domain','ip','url'),"https://www.startpage.com/sp/search?query={query}","search"),
+    Source("qwant","Qwant","Buscadores","Pesquisa geral no buscador Qwant",('free_text','username_candidate','email','domain'),"https://www.qwant.com/?q={query}","search"),
+    Source("google-scholar","Google Acadêmico","Documentos","Publicações científicas indexadas",('free_text',),"https://scholar.google.com/scholar?q={query}","file-text"),
+    Source("google-patents","Google Patentes","Documentos","Patentes públicas e documentos técnicos",('free_text',),"https://patents.google.com/?q={query}","file-text"),
+    Source("internet-archive","Internet Archive","Arquivos","Arquivos digitais públicos e históricos",('free_text','domain'),"https://archive.org/search?query={query}","archive"),
+    Source("hn-search","Hacker News Search","Comunidades","Pesquisa no índice público de discussões Hacker News",('free_text','username_candidate'),"https://hn.algolia.com/?query={query}","message-circle"),
+    Source("viewdns-whois","ViewDNS WHOIS","Infraestrutura","Consulta pública WHOIS por domínio ou IP",('domain','ip'),"https://viewdns.info/whois/?domain={query}","network"),
 )
 
 def list_sources(kind: str|None = None, category: str|None = None, term: str|None = None):

@@ -7,7 +7,7 @@
 .hosted-workflow-form input:not([type=checkbox]),.hosted-workflow-form select{width:100%;max-width:100%;padding:10px 12px;border:1px solid rgba(160,175,200,.3);border-radius:8px;color:inherit;background:#151820}
 .hosted-workflow-form select option{color:#eee;background:#151820}
 .hosted-check{display:flex;align-items:flex-start;gap:9px;font-weight:400!important;line-height:1.45}
-.hosted-check input{margin-top:4px}
+.hosted-check input[type=checkbox]{appearance:auto!important;width:18px!important;height:18px!important;min-width:18px;flex:0 0 18px;accent-color:#fa536c;margin:2px 0 0}
 .hosted-workflow-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .hosted-result{min-width:0;border:1px solid rgba(160,175,200,.22);border-radius:9px;padding:12px}
 .hosted-result h3{margin:0 0 8px;font-size:1rem}

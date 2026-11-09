@@ -49,7 +49,7 @@ ENGINES: tuple[Engine, ...] = (
            'domain', 'subfinder', 'bounded', 'Descoberta PASSIVA de subdomínios publicados', 'pinned container build'),
     Engine('amass', 'OWASP Amass', 'https://github.com/owasp-amass/amass', 'Apache-2.0*',
            'domain', 'amass', 'worker', 'Mapeamento passivo de superfície; pode precisar de serviço e fila', 'pinned container build'),
-    Engine('spiderfoot', 'SpiderFoot', 'https://github.com/smicallef/spiderfoot', 'MIT',
+    Engine('spiderfoot', 'SpiderFoot', 'https://github.com/smicallef/spiderfoot', 'GPL-2.0-only',
            'domain', 'spiderfoot', 'worker', 'Módulos OSINT executados de forma isolada e durável', 'v4.0'),
 )
 
@@ -111,7 +111,7 @@ def _argv(spec: Engine, query: str) -> list[str]:
     if spec.id == 'maigret':
         return [path, query, '--no-recursion', '--top-sites', '15', '--timeout', '4', '--max-connections', '5']
     if spec.id == 'subfinder':
-        return [path, '-silent', '-d', query, '-timeout', '4', '-max-time', '1', '-max-results', '30']
+        return [path, '-silent', '-d', query, '-timeout', '4', '-max-time', '1', '-rl', '5']
     raise EngineError(f'{spec.title} requer um worker específico, não uma chamada HTTP síncrona.')
 
 

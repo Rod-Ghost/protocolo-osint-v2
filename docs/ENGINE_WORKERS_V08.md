@@ -10,7 +10,7 @@ O runtime de Daemon é **um componente separado** do backend HTTP do Protocolo O
 | Maigret | https://github.com/soxoj/maigret | 0.6.6 | MIT | 20 fontes, limite de conexões, sem recursão |
 | subfinder | https://github.com/projectdiscovery/subfinder | v2.9.0 | MIT | Fontes passivas, domínio único |
 | OWASP Amass | https://github.com/owasp-amass/amass | v5.0.1 | Apache-2.0* | Enumeração **-passive**, uma tarefa isolada |
-| SpiderFoot | https://github.com/smicallef/spiderfoot | v4.0 | MIT | Perfil **-u passive**, poucos workers |
+| SpiderFoot | https://github.com/smicallef/spiderfoot/tree/v4.0 | v4.0 | GPLv2 | Perfil **-u passive**, poucos workers |
 
 *Amass possui componentes com licenças próprias. Revisar distribuição e inventário SBOM antes de publicar imagens para terceiros.*
 

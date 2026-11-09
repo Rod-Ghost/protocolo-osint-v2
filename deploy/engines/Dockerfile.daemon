@@ -29,6 +29,11 @@ RUN git clone --depth 1 --branch v4.0 https://github.com/smicallef/spiderfoot.gi
            -e 's/lxml>=4.6.3,<5/lxml>=6.0.2,<7/' \
            /opt/spiderfoot/requirements.txt && \
     python -m pip install --no-cache-dir -r /opt/spiderfoot/requirements.txt
+# Only patch the pinned *installed* upstream v4.0 CLI: preserve recognized
+# ASN/IPv6/Bitcoin types before its implicit username quoting fallback.
+COPY deploy/engines/patch_spiderfoot_cli.py /tmp/patch_spiderfoot_cli.py
+RUN python /tmp/patch_spiderfoot_cli.py /opt/spiderfoot/sf.py && \
+    python -m py_compile /opt/spiderfoot/sf.py
 RUN printf '#!/bin/sh\nexec python /opt/spiderfoot/sf.py "$@"\n' > /usr/local/bin/spiderfoot && \
     chmod 755 /usr/local/bin/spiderfoot
 COPY --from=go-engines /opt/bin/subfinder /usr/local/bin/subfinder

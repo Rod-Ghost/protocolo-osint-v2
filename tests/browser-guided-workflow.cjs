@@ -79,6 +79,9 @@ async function run(){
     await page.locator('#case-title').fill('Caso demonstrativo — investigação guiada');
     await page.locator('#case-form button[type=submit]').click();
     await page.locator('#case-list').getByText('Caso demonstrativo — investigação guiada').waitFor();
+    await page.locator('#toast.show').getByText('Caso criado no cofre criptografado deste navegador.',{exact:true}).waitFor();
+    // Capture design screenshots only after ephemeral notifications vanish.
+    await page.locator('#toast.show').waitFor({state:'hidden',timeout:12000});
 
     await page.locator('#primary-nav [data-view="sources"]').click();
     await page.locator('.case-builder.wf-enabled').waitFor();

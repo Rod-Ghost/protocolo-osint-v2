@@ -42,7 +42,7 @@
   let active='overview',currentId='',current=null,sequence=0;
   const el=(tag,cls,text)=>{const e=d.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e};
   const fmt=ms=>new Date(ms).toLocaleString('pt-BR');
-  const vault=()=>root.browserVault;
+  const vault=()=>typeof browserVault!=='undefined'?browserVault:null;
   const unlocked=()=>{try{return Boolean(vault()?.status().unlocked)}catch{return false}};
   function blank(message){
     pane.replaceChildren(el('p','cw-empty',message));
@@ -71,7 +71,7 @@
     }else if(active==='evidence'){
       if(!current.evidence.length)list.append(el('p','cw-empty','Nenhum registro neste caso.'));
       for(const e of current.evidence.slice(0,250)){
-        const card=item(str(e.title)||'Registro',e.provenance?.type==='engine_observation'?'Observação do motor — não verificada':str(e.note).slice(0,180),[str(e.kind),e.created_at?fmt(date(e.created_at)||Date.now()):'sem data','ID: '+str(e.id)].join(' · '));
+        const card=item(str(e.title)||'Registro',e.provenance?.type==='engine_observation'?'Observação do motor — não verificada':str(e.note).slice(0,180),[str(e.kind),date(e.created_at)!==null?fmt(date(e.created_at)):'sem data','ID: '+str(e.id)].join(' · '));
         list.append(card);
       }
     }else if(active==='plans'){

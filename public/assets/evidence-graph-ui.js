@@ -32,7 +32,8 @@
     '<option value="query">Alvos pesquisados</option><option value="sha256">Hashes de arquivos</option>',
     '</select></label><label><input id="eg-shared-only" type="checkbox">',
     ' Somente valores com 2+ registros</label>',
-    '<button id="eg-refresh" type="button" class="button ghost-button">Atualizar conexões</button></div>',
+    '<button id="eg-refresh" type="button" class="button ghost-button">Atualizar conexões</button>',
+    '<button id="eg-export" type="button" class="button ghost-button">Exportar grafo JSON</button></div>',
     '<div id="eg-stats" class="eg-stats" aria-live="polite"></div>',
     '<div id="eg-visual" class="eg-visual"></div>',
     '<div id="eg-detail" class="eg-detail"></div>',
@@ -201,6 +202,24 @@
       if(token===revision){graph=null;caseData=null;empty('Correlação indisponível: '+error.message)}
     }
   }
+  $('#eg-export',section).addEventListener('click',()=>{
+    if(!ready()||!graph||!caseData){
+      stats.textContent='Desbloqueie o cofre e selecione um caso para exportar.';return;
+    }
+    if(!confirm('Exportar grafo JSON NÃO criptografado, com dados e IDs do caso? O arquivo NÃO inclui os bytes dos documentos.'))return;
+    const exported={
+      format:'protocolo-osint/evidence-graph-v1',exported_at_device:new Date().toISOString(),
+      case_id:caseData.id,case_title:caseData.title,
+      nodes:graph.nodes,edges:graph.edges,
+      repeated_observables:graph.repeated_observables,stats:graph.stats,
+      notice:'Exportação local não criptografada. Vínculos documentais, não confirmação de identidade; preservar em local seguro.'
+    };
+    const data=new Blob([JSON.stringify(exported,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(data),link=document.createElement('a');
+    link.href=url;link.download='grafo-evidencias-'+String(caseData.id).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,60)+'.json';
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  });
   $('#eg-refresh',section).addEventListener('click',refresh);
   $('#eg-type',section).addEventListener('change',render);
   $('#eg-shared-only',section).addEventListener('change',render);

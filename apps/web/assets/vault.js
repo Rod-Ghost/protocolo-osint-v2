@@ -74,8 +74,65 @@
       async getCase(caseId){assertUnlocked();const c=state.cases.find(c=>c.id===caseId);return c?clone(c):null;},
       async createCase(title,description=''){
         assertUnlocked();title=title.trim();if(title.length<2||title.length>120)throw new Error('Título deve ter 2 a 120 caracteres.');
-        const item={id:id(),title,description:description.trim().slice(0,1500),created_at:now(),evidence:[],images:[]};
+        const item={id:id(),title,description:description.trim().slice(0,1500),created_at:now(),evidence:[],images:[],search_plans:[]};
         state.cases.push(item);await save(vaultSalt);return clone(item);
+      },
+      async saveSearchPlan(caseId,entry){
+        assertUnlocked();
+        const c=state.cases.find(c=>c.id===caseId);
+        if(!c)throw new Error('Caso não encontrado.');
+        if(!entry||typeof entry!=='object')throw new Error('Plano de busca inválido.');
+        const title=String(entry.title||'').trim(),query=String(entry.query||'').trim();
+        if(title.length<2||title.length>120||query.length<2||query.length>240)
+          throw new Error('Título ou termo do plano inválido.');
+        if(!Array.isArray(entry.source_ids)||!entry.source_ids.length||entry.source_ids.length>25)
+          throw new Error('Escolha entre 1 e 25 fontes por plano.');
+        const sourceIds=[...new Set(entry.source_ids)];
+        if(sourceIds.some(x=>typeof x!=='string'||!/^[a-z0-9-]{1,60}$/.test(x)))
+          throw new Error('Identificador de fonte inválido.');
+        const interval=Number(entry.interval_days||0);
+        if(![0,7,30].includes(interval))throw new Error('Frequência de revisão inválida.');
+        const filters=entry.filters||{};
+        if(typeof filters!=='object'||Array.isArray(filters))
+          throw new Error('Filtros inválidos.');
+        const safeFilters={exact:filters.exact===true,site:String(filters.site||'').slice(0,120),
+          filetype:String(filters.filetype||'').slice(0,10),exclude:String(filters.exclude||'').slice(0,100)};
+        if(!Array.isArray(c.search_plans))c.search_plans=[];
+        const previous=entry.id?c.search_plans.find(p=>p.id===entry.id):null;
+        if(entry.id&&!previous)throw new Error('Plano anterior não encontrado.');
+        const item={id:previous?.id||id(),title,query,
+          kind:String(entry.kind||'auto').slice(0,40),source_ids:sourceIds,
+          filters:safeFilters,interval_days:interval,
+          created_at:previous?.created_at||now(),updated_at:now(),
+          reviews:previous?.reviews||[]};
+        if(previous)Object.assign(previous,item);
+        else{
+          if(c.search_plans.length>=30)throw new Error('Limite de 30 planos por caso.');
+          c.search_plans.push(item);
+        }
+        await save(vaultSalt);
+        return clone(item);
+      },
+      async reviewSearchPlan(caseId,planId,entry={}){
+        assertUnlocked();
+        const c=state.cases.find(c=>c.id===caseId);
+        const plan=c?.search_plans?.find(p=>p.id===planId);
+        if(!plan)throw new Error('Plano não encontrado.');
+        const count=entry.count==null||entry.count===''?null:Number(entry.count);
+        if(count!==null&&(!Number.isSafeInteger(count)||count<0||count>1000000000))
+          throw new Error('Contagem manual inválida.');
+        const note=String(entry.note||'').trim();
+        if(note.length>500)throw new Error('Anotação longa demais.');
+        const reviews=plan.reviews||[];
+        const previous=reviews.length?reviews[reviews.length-1]:null;
+        const review={id:id(),observed_at:now(),count,note,
+          delta:count!==null&&previous?.count!==null&&previous?.count!==undefined
+            ?count-previous.count:null,
+          count_origin:'manual_unverified'};
+        plan.reviews=[...reviews,review].slice(-20);
+        plan.updated_at=now();
+        await save(vaultSalt);
+        return clone(review);
       },
       async addEvidence(caseId,entry){
         assertUnlocked();const c=state.cases.find(c=>c.id===caseId);if(!c)throw new Error('Caso não encontrado.');

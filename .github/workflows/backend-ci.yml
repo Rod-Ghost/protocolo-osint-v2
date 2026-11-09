@@ -77,6 +77,10 @@ jobs:
       - run: node --check apps/web/assets/mission-shell.js
       - run: node --check public/assets/mission-shell.js
       - run: node --check tests/browser-mission-shell.cjs
+      - run: node --check apps/web/assets/case-workspace.js
+      - run: node --check public/assets/case-workspace.js
+      - run: node --check tests/browser-case-workspace.cjs
+      - run: node --test tests/test-case-workspace.cjs
       - run: node --check apps/web/assets/guided-search-workflow.js
       - run: node --check public/assets/guided-search-workflow.js
       - run: node --check tests/browser-guided-workflow.cjs

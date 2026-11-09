@@ -133,6 +133,8 @@ async function main(){
     await page.locator('#eg-visual').getByText('Desbloqueie o cofre',{exact:false}).waitFor();
     assert(!(await page.locator('#eg-detail').innerText()).includes('example.org'),
       'Graph retained sensitive case detail after vault lock');
+    assert.equal(await page.locator('#graph-canvas svg').count(),0,
+      'Legacy graph must clear sensitive SVG labels on vault lock');
     assert.equal(errors.length,0,errors.join('; '));
     console.log('Capture E2E PASS: local file, real SHA, encrypted case, original download, report and lock.');
   }finally{

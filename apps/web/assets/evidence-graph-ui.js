@@ -224,7 +224,15 @@
   $('#eg-type',section).addEventListener('change',render);
   $('#eg-shared-only',section).addEventListener('change',render);
   caseSelect?.addEventListener('change',refresh);
-  window.addEventListener('protocolo:vault-change',refresh);
+  window.addEventListener('protocolo:vault-change',()=>{
+    if(!ready()){
+      // Also clear the legacy SVG, which otherwise retains decrypted labels
+      // in the hidden DOM until the user explicitly returns to this tab.
+      const legacy=$('#graph-canvas',panel);
+      if(legacy)legacy.replaceChildren();
+    }
+    refresh();
+  });
   document.addEventListener('click',event=>{
     if(event.target.closest('[data-view="graph"]'))setTimeout(refresh,100);
   });

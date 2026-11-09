@@ -53,7 +53,7 @@ async function test(){
   assert.equal(requests[0].options.referrerPolicy,'no-referrer');
   await assert.rejects(cap.readUrl('https://example.org/missing',{
     fetcher:async()=>new Response('missing',{status:404})
-  }),/HTTP 404/);
+  }),/recebido 404/);
   await assert.rejects(cap.readUrl('https://example.org/blocked',{
     fetcher:async()=>{throw new TypeError('CORS blocked')}
   }),/CORS/);

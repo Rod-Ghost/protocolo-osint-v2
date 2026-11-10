@@ -89,13 +89,14 @@ async function run(){
   assert.equal(saved.search_plans[0].query,'example.org');
   assert.equal(requests.length,1);
   assert.equal(requests[0].kind,'domain');
-  await page.setViewportSize({width:390,height:844});
   await page.locator('#primary-nav [data-view=dashboard]').click();
+  await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:'test-artifacts/quick-investigation-mobile.png',fullPage:false});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   assert(overflow<=2,'Mobile horizontal scroll: '+overflow);
   const local=await page.evaluate(()=>localStorage.getItem('protocolo-osint:vault:1'));
   assert(local&&!local.includes('Caso rápido example.org'),'Plaintext case leaked to localStorage');
+  await page.setViewportSize({width:1440,height:900});
   await page.reload({waitUntil:'domcontentloaded'});
   await page.locator('#primary-nav [data-view=cases]').click();
   await page.locator('#vault-pass').fill('laboratory-only-persistent-vault-passphrase');

@@ -138,6 +138,7 @@
           row.append(el('span','',String(text).slice(0,250)));
           if(typeof record==='object'&&record!==null){
             const detail=[record.description,record.type,
+              record.data!=null?'Dado: '+record.data:'',
               record.works_count!=null?record.works_count+' trabalhos':''].filter(Boolean).join(' · ');
             if(detail)row.append(el('small','',detail.slice(0,280)));
           }

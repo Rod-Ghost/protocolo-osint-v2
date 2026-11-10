@@ -142,9 +142,15 @@
              !Array.isArray(source.items)||source.items.length>80)
             throw new Error('Fonte ou estado da consulta inválido.');
           if(entry.format==='protocolo-osint/investigation-run-v2'){
+            const workerFailure=source.status==='failed'&&
+              typeof source.job_id==='string'&&/^[a-f0-9]{32}$/.test(source.job_id);
             if(['observed','no_result','failed'].includes(source.status)&&
-               source.executed!==true)
+               source.executed!==true&&!workerFailure)
               throw new Error('Fonte marcada como consultada sem execução registrada.');
+            if(source.status==='observed'&&source.items.length===0)
+              throw new Error('Fonte não retornou registros, mas foi marcada com achados.');
+            if(source.status==='no_result'&&source.items.length!==0)
+              throw new Error('Fonte marcada sem retorno contém registros.');
             if(['not_queried','incompatible'].includes(source.status)&&
                source.executed===true)
               throw new Error('Fonte não consultada não pode indicar execução.');

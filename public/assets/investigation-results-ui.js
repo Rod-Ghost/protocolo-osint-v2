@@ -51,7 +51,9 @@
       }catch{type='url'}
     }
     const providers=type==='domain'?[['dns','DNS público'],['certificates','Certificados TLS']]:
-      type==='username_candidate'?[['github','Perfil público do GitHub']]:[];
+      type==='username_candidate'?[['github','Perfil público do GitHub']]:
+      type==='free_text'&&value.trim().includes(' ')?[['github_name','Candidatos por nome no GitHub']]:[];
+    if(type==='username_candidate'&&query.startsWith('@'))query=query.slice(1);
     const engineKind=type==='username_candidate'?'username':
       type==='free_text'&&value.includes(' ')?'name':
       ['domain','email','ip','url'].includes(type)?type:'auto';

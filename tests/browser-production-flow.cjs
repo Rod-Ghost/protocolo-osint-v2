@@ -38,14 +38,22 @@ async function flow(page) {
   await page.locator('#primary-nav [data-view="sources"]').click();
   await page.locator('#cb-query').fill('example.org');
   await page.locator('#cb-kind').selectOption('domain');
+  // The guided UI hides stage 2 until the operator advances explicitly.
+  // The original catalog remains available in advanced mode.
+  if(await page.locator('#wf-next').isVisible())
+    await page.locator('#wf-next').click();
   await page.locator('#cb-source-list input[value="google"]').waitFor({timeout});
   await page.locator('#cb-source-list input[value="google"]').check();
+  if(await page.locator('#wf-next').isVisible())
+    await page.locator('#wf-next').click();
   await page.locator('#cb-generate').click();
   await page.locator('#cb-results .cb-count').waitFor({timeout});
   const countText=await page.locator('#cb-results .cb-count').textContent();
   assert(/links preparados/.test(countText),countText);
   assert(/NÃO MEDIDOS/.test(countText), 'Misleading external search result count');
 
+  if(await page.locator('#wf-next').isVisible())
+    await page.locator('#wf-next').click();
   await page.locator('#cb-refresh-cases').click();
   await page.locator('#cb-case').selectOption({label:'Caso E2E público example.org'});
   await page.locator('#cb-save').click();

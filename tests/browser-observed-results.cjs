@@ -54,7 +54,7 @@ async function main(){
    const body=route.request().postDataJSON();calls.push({path,body});
    const domain=body.kind==='domain';
    const response=body.source_ids.map(id=>{
-    const common={id,label:id,observed_at:'2026-11-10T12:00:00Z',
+    const common={id,label:({ 'github-users':'Candidatos por nome no GitHub',wikidata:'Entidades Wikidata',openalex:'Autores OpenAlex','dns-public':'DNS público',crt:'Certificados TLS'}[id]||id),observed_at:'2026-11-10T12:00:00Z',
       verification_status:'unverified',items:[],count:null,source_url:'',
       query_url:'https://example.org/?q='+encodeURIComponent(body.value)};
     if(id==='dns-public'&&domain)return {...common,status:'observed',executed:true,count:1,

@@ -165,11 +165,13 @@
   const preparedNow=()=>!!builder()?.isCurrent();
   function updateFinalActions(){
     const ready=preparedNow(),inFinal=state.step===3;
-    // The previous save button is retained for existing workflows,
-    // and a new always-actionable CTA handles the unprepared path.
-    prepareSave.hidden=ready || quickSaveSuccess;
-    save.hidden=!ready || quickSaveSuccess;
-    finish.hidden=!quickSaveSuccess;
+    const guided=state.mode==='guided';
+    // Advanced mode preserves the original save control at all times, even
+    // when disabled, so operators can inspect the complete legacy workflow.
+    prepareSave.hidden=!guided||ready||quickSaveSuccess;
+    save.hidden=guided&&(!ready||quickSaveSuccess);
+    finish.hidden=!guided||!quickSaveSuccess;
+    saveHint.hidden=!guided;
     prepareSave.disabled=quickSaveBusy;
     saveHint.textContent=quickSaveSuccess?
       'Plano salvo no cofre. Nenhuma pesquisa externa foi executada.':

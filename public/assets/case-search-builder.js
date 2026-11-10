@@ -112,7 +112,7 @@
   }
   async function loadCases(){
     const select=$('#cb-case',block);
-    const current=select.value||state.caseId;
+    const current=state.caseId||select.value;
     select.replaceChildren();
     const first=create('option','','Somente preparar links');first.value='';select.append(first);
     if(!canSave()){

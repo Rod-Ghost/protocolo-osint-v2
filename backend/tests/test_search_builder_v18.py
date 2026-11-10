@@ -13,7 +13,9 @@ from protocolo_osint.main import app as local_app
 
 def test_legacy_catalog_is_extended_not_replaced():
     ids = [s.id for s in SOURCES]
-    assert len(ids) == len(set(ids)) == 48
+    # Preserve all 48 original V2 links; one new API-backed DNS source is additive.
+    assert len(ids) == len(set(ids)) == 49
+    assert 'dns-public' in ids
     assert {"google", "bing", "crt", "github", "wayback"} & set(ids) == {"google", "bing", "crt", "github"}
     assert {"startpage", "qwant", "google-scholar", "google-patents",
             "internet-archive", "hn-search", "viewdns-whois"} <= set(ids)

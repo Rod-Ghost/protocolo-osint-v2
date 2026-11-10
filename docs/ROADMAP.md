@@ -1,5 +1,13 @@
 # Roadmap orientado a testes — Protocolo OSINT V2
 
+
+## Marco V3.2 (10/11/2026) — Cobertura por fonte
+
+**Implementado para homologação:** catálogo de 49 fontes (48 antigas + DNS público) e cinco adaptadores reais de API selecionáveis; resultados observados separados de links manuais; PDF e cofre local de snapshots preservando status por fonte. Testes unitários/Chromium com mocks e revisão de compatibilidade mantidos.
+
+**Pendente:** testes de provedores externos reais em produção; limites distribuídos por IP/sessão e orçamento; verificação de heartbeat/job real do Daemon; conectores oficiais adicionais sem scraping indevido; correlação auditável de homônimos; relatório com captura de páginas e cadeia de custódia; revisão de fontes que restringem acesso/licenciamento.
+
+
 ## v0.2.0 — Entregue nesta branch
 
 - Painel responsivo em HTML/CSS/JS sem build.

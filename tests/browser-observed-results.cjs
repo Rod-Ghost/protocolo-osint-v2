@@ -11,7 +11,12 @@ const root=resolve(__dirname,'../public');
 const mime={'.html':'text/html','.css':'text/css','.js':'text/javascript','.json':'application/json'};
 const sources=[
  {id:'google',name:'Google',category:'Buscadores',kinds:['domain','free_text']},
- {id:'bing',name:'Bing',category:'Buscadores',kinds:['domain','free_text']}
+ {id:'bing',name:'Bing',category:'Buscadores',kinds:['domain','free_text']},
+ {id:'dns-public',name:'DNS público',category:'Infraestrutura',kinds:['domain']},
+ {id:'crt',name:'crt.sh',category:'Infraestrutura',kinds:['domain']},
+ {id:'github-users',name:'GitHub usuários',category:'Identidades',kinds:['free_text','username_candidate']},
+ {id:'wikidata',name:'Wikidata',category:'Registros',kinds:['free_text']},
+ {id:'openalex',name:'OpenAlex',category:'Documentos',kinds:['free_text']}
 ];
 async function serve(){return new Promise(done=>{
  const server=createServer((req,res)=>{
@@ -45,25 +50,34 @@ async function main(){
     url:'https://example.org/?q='+encodeURIComponent(body.value)
    })),skipped:[],external_requests:0,actual_results:null});
   }
-  if(path==='/api/v1/lookup'){
+  if(path==='/api/v1/investigations/execute'){
    const body=route.request().postDataJSON();calls.push({path,body});
-   if(body.provider==='dns')return reply({
-    provider:'dns',provider_name:'DNS público',query:body.value,
-    status:'observed',items:[{type:'A',name:body.value,data:'192.0.2.1',ttl:30}],
-    count:1,observed_at:'2026-11-10T12:00:00Z',
-    source_url:'https://cloudflare-dns.com/dns-query',verified:false
+   const domain=body.kind==='domain';
+   const response=body.source_ids.map(id=>{
+    const common={id,label:({ 'github-users':'Candidatos por nome no GitHub',wikidata:'Entidades Wikidata',openalex:'Autores OpenAlex','dns-public':'DNS público',crt:'Certificados TLS'}[id]||id),observed_at:'2026-11-10T12:00:00Z',
+      verification_status:'unverified',items:[],count:null,source_url:'',
+      query_url:'https://example.org/?q='+encodeURIComponent(body.value)};
+    if(id==='dns-public'&&domain)return {...common,status:'observed',executed:true,count:1,
+      provider:'dns',items:[{type:'A',name:body.value,data:'192.0.2.1',ttl:30}],
+      source_url:'https://cloudflare-dns.com/dns-query'};
+    if(id==='crt'&&domain)return {...common,status:'no_result',executed:true,count:0,
+      provider:'certificates',source_url:'https://crt.sh/?q=example.org'};
+    if(id==='github-users'&&!domain)return {...common,status:'observed',executed:true,count:1,
+      provider:'github_name',items:[{login:'candidate-example',profile_url:'https://github.com/candidate-example'}],
+      source_url:'https://github.com/search?q=Test%20Example&type=users'};
+    if(id==='wikidata'&&!domain)return {...common,status:'observed',executed:true,count:1,
+      provider:'wikidata_entities',items:[{id:'Q123',label:'Test Example',
+      entity_url:'https://www.wikidata.org/wiki/Q123'}]};
+    if(id==='openalex'&&!domain)return {...common,status:'observed',executed:true,count:1,
+      provider:'openalex_authors',items:[{display_name:'Test Example',
+      author_url:'https://openalex.org/A12345',works_count:3}]};
+    if(['dns-public','crt','github-users','wikidata','openalex'].includes(id))
+      return {...common,status:'incompatible',executed:false,notice:'Fonte incompatível'};
+    return {...common,status:'not_queried',executed:false,notice:'Não houve API nesta fonte'};
    });
-   if(body.provider==='github_name')return reply({
-    provider:'github_name',provider_name:'Candidatos por nome no GitHub',query:body.value,
-    status:'observed',items:[{login:'candidate-example',profile_url:'https://github.com/candidate-example'}],
-    count:1,observed_at:'2026-11-10T12:00:03Z',
-    source_url:'https://github.com/search?q=Test%20Example&type=users',verified:false
-   });
-   if(body.provider==='certificates')return reply({
-    provider:'certificates',provider_name:'Certificados TLS',query:body.value,
-    status:'no_result',items:[],count:0,observed_at:'2026-11-10T12:00:02Z',
-    source_url:'https://crt.sh/?q=example.org',verified:false
-   });
+   return reply({format:'protocolo-osint/investigation-run-v2',target:body.value,
+     kind:body.kind,observed_at:'2026-11-10T12:00:00Z',sources:response,
+     automatic_requests:response.filter(s=>s.executed).length});
   }
   if(path==='/api/v1/operator/search'){
    const body=route.request().postDataJSON();calls.push({path,body,csrf:route.request().headers()['x-osint-csrf']});
@@ -98,7 +112,7 @@ async function main(){
   await page.locator('#wf-next').click();
   await page.locator('#ir-panel:visible').waitFor();
   assert.equal(await page.locator('#ir-pdf').isVisible(),false);
-  assert.equal(calls.filter(c=>c.path==='/api/v1/lookup').length,0);
+  assert.equal(calls.filter(c=>c.path==='/api/v1/investigations/execute').length,0);
   await page.locator('#ir-run').click();
   await page.locator('#ir-list .ir-source').nth(1).waitFor();
   const first=await page.evaluate(()=>ProtocoloInvestigationUI.view());
@@ -106,9 +120,9 @@ async function main(){
   assert.equal(first.summary.no_records,1);
   assert.equal(first.summary.with_records,1);
   assert.equal(first.summary.failed,0);
-  assert.equal(calls.filter(c=>c.path==='/api/v1/lookup').length,2);
+  assert.equal(calls.filter(c=>c.path==='/api/v1/investigations/execute').length,1);
   assert.match(await page.locator('#ir-summary').innerText(),/1 registro\(s\) retornado/);
-  assert.equal(await page.locator('#ir-list a[href^="https://cloudflare-dns.com"]').count(),1);
+  assert((await page.locator('#ir-list a[href^="https://cloudflare-dns.com"]').count())>=1);
   await page.locator('#ir-list details').first().locator('summary').click();
   await page.screenshot({path:'test-artifacts/observed-results-desktop.png',fullPage:false});
   const downloadEvent=page.waitForEvent('download');
@@ -124,8 +138,7 @@ async function main(){
   const combined=await page.evaluate(()=>ProtocoloInvestigationUI.view());
   assert.equal(combined.summary.returned,2);
   assert.equal(combined.sources,undefined);
-  assert.equal(combined.run.sources[2].id,'subfinder');
-  assert.equal(combined.run.sources[2].items[0],'sub.example.org');
+  assert.equal(combined.run.sources.find(s=>s.id==='subfinder').items[0],'sub.example.org');
   assert.equal(calls.find(c=>c.path==='/api/v1/operator/search').csrf,'test-csrf');
   await page.locator('#ir-save').click();
   await page.locator('#ir-status').getByText(/Resultados retornados foram salvos no cofre/).waitFor();
@@ -135,9 +148,11 @@ async function main(){
    return {runs:c.investigation_runs,plans:c.search_plans,evidence:c.evidence};
   });
   assert.equal(saved.runs.length,1);
-  assert.equal(saved.runs[0].sources.length,3);
-  assert.equal(saved.runs[0].sources[0].count,1);
-  assert.equal(saved.runs[0].sources[2].status,'completed');
+  assert.equal(saved.runs[0].sources.length,8);
+  assert.equal(saved.runs[0].sources.find(s=>s.id==='dns-public').count,1);
+  assert.equal(saved.runs[0].sources.find(s=>s.id==='subfinder').status,'completed');
+  assert(saved.runs[0].sources.some(s=>s.status==='not_queried'));
+  assert.equal(saved.runs[0].format,'protocolo-osint/investigation-run-v2');
   assert.equal(saved.plans.length,0,'Only observed results should be persisted by save results');
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:'test-artifacts/observed-results-mobile.png',fullPage:false});
@@ -168,11 +183,13 @@ async function main(){
   await page.locator('#cb-kind').selectOption('free_text');
   await page.locator('#wf-progress [data-wf-step="3"]').click();
   await page.locator('#ir-run').click();
-  await page.locator('#ir-list .ir-observed').waitFor();
+  await page.locator('#ir-list .ir-observed').first().waitFor();
   const names=await page.evaluate(()=>ProtocoloInvestigationUI.view());
-  assert.equal(names.summary.returned,1);
-  assert.equal(names.run.sources[0].id,'github_name');
-  assert.equal(calls.at(-1).body.provider,'github_name');
+  assert.equal(names.summary.returned,3);
+  assert(names.run.sources.some(s=>s.id==='github-users'&&s.status==='observed'));
+  assert(names.run.sources.some(s=>s.id==='wikidata'&&s.status==='observed'));
+  assert(names.run.sources.some(s=>s.id==='openalex'&&s.status==='observed'));
+  assert.equal(calls.at(-1).body.kind,'free_text');
   assert.match(await page.locator('#ir-panel').innerText(),/Candidatos por nome no GitHub/);
   assert.deepEqual(errors,[]);
   assert.deepEqual(outsiders,[]);

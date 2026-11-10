@@ -45,6 +45,7 @@ SOURCES: tuple[Source, ...] = (
     Source('instagram','Instagram público','Redes sociais','Perfis públicos indexados',('username_candidate','free_text'),'https://www.google.com/search?q=site%3Ainstagram.com+{query}','users'),
     Source('facebook','Facebook público','Redes sociais','Páginas públicas indexadas',('free_text','username_candidate'),'https://www.google.com/search?q=site%3Afacebook.com+{query}','users'),
     Source('x','X público','Redes sociais','Publicações públicas indexadas',('free_text','username_candidate'),'https://www.google.com/search?q=site%3Ax.com+{query}','users'),
+    Source('dns-public','DNS público','Infraestrutura','Registros A/MX/NS públicos via API de consulta DNS',('domain',),'https://cloudflare-dns.com/dns-query?name={query}&type=A','network'),
     Source('crt','crt.sh','Infraestrutura','Certificados CT relacionados a domínios',('domain',),'https://crt.sh/?q=%25{query}','shield'),
     Source('rdap','RDAP.org','Infraestrutura','Registros RDAP de domínios',('domain',),'https://rdap.org/domain/{query}','network'),
     Source('rdap-ip','RDAP IP','Infraestrutura','Registros RDAP de IPs',('ip',),'https://rdap.org/ip/{query}','network'),

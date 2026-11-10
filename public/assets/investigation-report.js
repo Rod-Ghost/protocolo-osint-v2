@@ -73,33 +73,57 @@
     .normalize('NFC').replace(/[^\x20-\x7e\u00a0-\u00ff]/g,'?');
   const escapePDF=v=>ascii(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
   function pdfBytes(run){
-    if(!run||typeof run!=='object'||!Array.isArray(run.sources)||run.sources.length>18)
+    if(!run||typeof run!=='object'||!Array.isArray(run.sources)||run.sources.length>65)
       throw Error('Relatório de investigação inválido.');
     const lines=[],line=(text,link='')=>lines.push({text:trim(text,420),link:safeLink(link)});
     const stats=summary(run);
-    line('PROTOCOLO OSINT V2 - RELATORIO DE CONSULTAS PUBLICAS');
-    line('Documento preliminar. Resultados de APIs e motores NAO verificados independentemente.');
+    line('PROTOCOLO OSINT V2 | RELATORIO DE INVESTIGACAO PUBLICA');
+    line('Documento preliminar. Resultados e candidatos sujeitos a verificacao independente.');
     line('Alvo: '+trim(run.target,253)+'   Tipo: '+trim(run.kind,32));
     line('Consulta iniciada: '+(validDate(run.observed_at)||'nao informada'));
-    line('Provedores consultados: '+stats.checked+'   Com registros: '+stats.with_records+
-      '   Sem registros retornados: '+stats.no_records+
-      '   Falhas: '+stats.failed+'   Pendentes: '+stats.pending);
+    line('FONTES: '+run.sources.length+' entradas · '+stats.checked+' efetivamente consultadas');
+    line('Com registros: '+stats.with_records+' | Sem registros retornados: '+stats.no_records+
+      ' | Falhas: '+stats.failed+' | Pendentes: '+stats.pending);
+    line('NAO consultadas manualmente: '+run.sources.filter(x=>x.status==='not_queried').length+
+      ' | Incompativeis: '+run.sources.filter(x=>x.status==='incompatible').length);
     line('Registros retornados (limitados por provedor): '+stats.returned);
     line('Contagens nao indicam total de resultados na Internet nem identidade comprovada.');
     line('');
     for(const [idx,s] of run.sources.entries()){
-      line((idx+1)+'. '+trim(s.label||s.id,65)+' - '+trim(s.status,22)+
-        ' - '+(Number.isSafeInteger(s.count)?s.count+' registro(s)':'quantidade desconhecida'));
+      const statusName={
+        observed:'REGISTROS RETORNADOS',no_result:'SEM REGISTROS RETORNADOS',
+        completed:'SAIDA DE MOTOR',failed:'FALHA DE CONSULTA',
+        pending:'PENDENTE',not_queried:'NAO CONSULTADA',
+        incompatible:'INCOMPATIVEL',unavailable:'INDISPONIVEL'
+      }[s.status]||trim(s.status,30);
+      line((idx+1)+'. '+trim(s.label||s.id,65)+' | '+statusName+
+        ' | '+(Number.isSafeInteger(s.count)?s.count+' registro(s)':'sem contagem confirmada'));
       if(s.observed_at)line('   Observado: '+trim(s.observed_at,40));
       if(s.job_id)line('   Tarefa: '+trim(s.job_id,64));
-      if(s.source_url)line('   Abrir fonte: '+trim(s.source_url,105),s.source_url);
+      if(s.source_url)line('   Abrir fonte original (clique aqui): '+trim(s.source_url,70),s.source_url);
+      if(s.query_url)line('   Abrir pesquisa preparada (NAO executada): '+
+        trim(s.query_url,65),s.query_url);
+      if(s.status==='not_queried')line('   IMPORTANTE: nao houve GET/API nesta fonte. Link manual apenas.');
       if(s.notice)line('   Nota: '+trim(s.notice,170));
       for(const item of arr(s.items).slice(0,40)){
-        const record=typeof item==='string'?item:JSON.stringify(item);
-        const text=trim(record,190);
-        const match=String(record).match(/https:\/\/[^\s"<>]{5,200}/);
-        const url=match?safeLink(match[0].replace(/[.,;)]$/,'')):'';
-        line('     '+text,url);
+        if(typeof item==='string'){
+          const text=trim(item,190);
+          const match=text.match(/https:\/\/[^\s"<>]{5,200}/);
+          line('     '+text,match?match[0].replace(/[.,;)]$/,''):'');
+          continue;
+        }
+        if(!item||typeof item!=='object')continue;
+        const head=trim(item.display_name||item.label||item.login||item.name||
+          item.data||item.id||'Registro sem rotulo',100);
+        const detail=[
+          item.description, item.type,
+          item.data!=null?'Dado: '+item.data:'',
+          item.works_count!=null?'Trabalhos: '+item.works_count:'',
+          item.ttl!=null?'TTL: '+item.ttl:''
+        ].filter(Boolean).map(x=>trim(x,110)).join(' | ');
+        const url=safeLink(item.profile_url||item.entity_url||item.author_url||'');
+        line('     '+head+(detail?' | '+detail:''),url);
+        if(url)line('       Abrir perfil ou referencia (clique): '+trim(url,65),url);
       }
       if(arr(s.items).length>40)line('     [Outros registros omitidos no PDF]');
       line('');

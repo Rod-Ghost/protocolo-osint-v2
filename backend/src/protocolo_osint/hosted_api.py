@@ -19,6 +19,7 @@ from .search_builder import BuilderError, build_search_plan
 from .investigation_lab import analyze as lab_analyze, OPERATIONS as LAB_OPERATIONS
 from .detection import detect_type
 from .live_lookup import PROVIDERS, LookupError, lookup
+from .source_execution import coverage as source_execution_coverage, execute_sources
 from .engine_hub import EngineError, execute as execute_engine, inventory as engine_inventory
 from .image_routes import router as image_router, ReverseRequest
 from .reverse_image import availability as reverse_availability, search as reverse_search, ReverseImageError
@@ -51,7 +52,7 @@ class SearchRequest(BaseModel):
 
 class LookupRequest(BaseModel):
     value: str = Field(min_length=1, max_length=253)
-    provider: Literal["dns", "certificates", "github", "github_name"]
+    provider: Literal["dns", "certificates", "github", "github_name", "wikidata_entities", "openalex_authors"]
 
 
 @app.middleware("http")
@@ -133,6 +134,22 @@ def custom_search_builder(payload: BuilderRequest):
     try:
         return build_search_plan(payload.value, payload.source_ids,
                                  kind=payload.kind, filters=payload.filters)
+    except BuilderError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/v1/investigations/capabilities")
+def investigation_capabilities():
+    """Separate link directory from reviewed execution adapters."""
+    return source_execution_coverage()
+
+
+@app.post("/api/v1/investigations/execute")
+def execute_investigation_sources(payload: BuilderRequest):
+    """Return actual per-source status for one explicitly selected investigation."""
+    try:
+        return execute_sources(payload.value, payload.source_ids, kind=payload.kind,
+                               filters=payload.filters)
     except BuilderError as exc:
         raise HTTPException(422, str(exc)) from exc
 

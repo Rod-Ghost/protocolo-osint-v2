@@ -49,3 +49,12 @@
  .ir-buttons button,.ir-actions button{width:100%;min-width:0;white-space:normal}
  .ir-list{grid-template-columns:minmax(0,1fr)}
 }
+
+.ir-manual-group{grid-column:1/-1;border:1px solid rgba(176,189,204,.28);
+  border-radius:11px;padding:11px 12px;background:rgba(48,56,74,.17);min-width:0}
+.ir-manual-group>summary{cursor:pointer;color:#d6dfeb;font-size:.8rem;font-weight:730}
+.ir-manual-list{margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.ir-manual-list .ir-source{background:rgba(16,23,34,.4);padding:10px}
+.ir-manual-list .ir-source .ir-source-note{font-size:.71rem}
+.light .ir-manual-group{background:#eaf0f2}.light .ir-manual-group>summary{color:#254457}
+@media(max-width:600px){.ir-manual-list{grid-template-columns:minmax(0,1fr)}}

@@ -112,3 +112,47 @@ def test_incomplete_fullname_lookup_is_not_reported_as_zero():
     })) as client:
         with pytest.raises(LookupError, match="incompleta"):
             lookup("Bruno Fraga", "github_name", client=client)
+
+
+def test_wikidata_search_records_are_bounded_and_linked_to_entities():
+    seen = []
+    def handler(request):
+        seen.append(str(request.url))
+        assert request.url.host == "www.wikidata.org"
+        assert request.url.path == "/w/api.php"
+        assert request.url.params["search"] == "Test Person"
+        return httpx.Response(200, json={"search":[
+            {"id": "Q123", "label": "Test Person", "description": "entity candidate"},
+            {"id": "../unsafe", "label": "invalid identifier"},
+        ]})
+    with mocked_client(handler) as client:
+        result = lookup("Test Person", "wikidata_entities", client=client)
+    assert len(seen) == 1
+    assert result["count"] == 1
+    assert result["items"][0]["entity_url"] == "https://www.wikidata.org/wiki/Q123"
+    assert result["verified"] is False
+
+
+def test_openalex_author_results_do_not_claim_a_global_count():
+    def handler(request):
+        assert request.url.host == "api.openalex.org"
+        assert request.url.path == "/authors"
+        assert request.url.params["per_page"] == "10"
+        return httpx.Response(200, json={
+            "meta":{"count":120000},
+            "results":[
+                {"id":"https://openalex.org/A12345678",
+                 "display_name":"Test Person","works_count":42},
+                {"id":"http://attacker.example/A1","display_name":"Bad"},
+            ]})
+    with mocked_client(handler) as client:
+        result = lookup("Test Person", "openalex_authors", client=client)
+    assert result["count"] == 1
+    assert result["items"][0]["author_url"] == "https://openalex.org/A12345678"
+    assert result["verified"] is False
+
+
+@pytest.mark.parametrize("provider", ["wikidata_entities", "openalex_authors"])
+def test_invalid_person_names_are_rejected_before_public_requests(provider):
+    with pytest.raises(LookupError):
+        lookup("OR username:secret", provider)

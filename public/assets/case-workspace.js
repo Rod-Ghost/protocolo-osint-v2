@@ -99,6 +99,12 @@
             ' · '+(source.count==null?'sem contagem':source.count+' registro(s)')));
           for(const evidence of arr(source.items).slice(0,35))
             itemLine.append(el('small','',typeof evidence==='string'?evidence.slice(0,400):JSON.stringify(evidence).slice(0,400)));
+          const manualHref=root.ProtocoloInvestigationReport?.safeLink(source.query_url);
+          if(manualHref){
+            const link=el('a','','Abrir consulta manual — fonte não verificada');
+            link.href=manualHref;link.target='_blank';link.rel='noopener noreferrer';
+            itemLine.append(link);
+          }
           const href=root.ProtocoloInvestigationReport?.safeLink(source.source_url);
           if(href){
             const a=el('a','','Abrir fonte pública');a.href=href;a.target='_blank';a.rel='noopener noreferrer';itemLine.append(a);

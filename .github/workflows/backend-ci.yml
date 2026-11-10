@@ -54,6 +54,8 @@ jobs:
       - run: node --check apps/web/assets/investigation-results-ui.js
       - run: node --check public/assets/investigation-results-ui.js
       - run: node --test tests/test-investigation-report.cjs
+      - run: node --check tests/test-source-archive.cjs
+      - run: node tests/test-source-archive.cjs
       - run: node --check apps/web/assets/case-search-builder.js
       - run: node --check public/assets/case-search-builder.js
       - run: node tests/test-case-search-builder.cjs

@@ -97,6 +97,8 @@
       lastSavedId?'Relatório já registrado neste caso':'Salvar uma cópia criptografada desta consulta';
     pdfButton.disabled=!run.sources.length;
     list.replaceChildren();
+    const deferred=el('details','ir-manual-group'),deferredList=el('div','ir-list ir-manual-list');
+    let deferredCount=0;
     const labels={observed:'Registros retornados',completed:'Saída retornada',
       no_result:'Nenhum registro retornado',failed:'Falha na consulta',
       pending:'Pendente',unavailable:'Não disponível',
@@ -149,7 +151,14 @@
         }
         card.append(details);
       }
-      list.append(card);
+      if(['not_queried','incompatible'].includes(source.status)){
+        deferredList.append(card);deferredCount++;
+      }else list.append(card);
+    }
+    if(deferredCount){
+      deferred.append(el('summary','',
+        deferredCount+' fonte(s) sem execução automática — abrir links manuais'),deferredList);
+      list.append(deferred);
     }
   }
   const sleep=ms=>new Promise(r=>root.setTimeout(r,ms));

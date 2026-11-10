@@ -126,14 +126,14 @@
         assertUnlocked();
         const c=state.cases.find(x=>x.id===caseId);
         if(!c)throw new Error('Caso não encontrado no cofre.');
-        if(!entry||entry.format!=='protocolo-osint/investigation-run-v1'||
+        if(!entry||!['protocolo-osint/investigation-run-v1','protocolo-osint/investigation-run-v2'].includes(entry.format)||
            typeof entry.target!=='string'||entry.target.trim().length<2||
            entry.target.length>253||!Array.isArray(entry.sources)||
-           entry.sources.length<1||entry.sources.length>10)
+           entry.sources.length<1||entry.sources.length>65)
           throw new Error('Relatório de consulta inválido.');
         const supported=new Set(['dns','certificates','github','github_name',
           'sherlock','maigret','subfinder','amass','spiderfoot']);
-        const statuses=new Set(['observed','no_result','completed','failed','pending','unavailable']);
+        const statuses=new Set(['observed','no_result','completed','failed','pending','unavailable','not_queried','incompatible']);
         const clean=String(entry.target).trim();
         const sources=entry.sources.map(source=>{
           if(!source||!supported.has(source.id)||!statuses.has(source.status)||
@@ -165,6 +165,15 @@
           return {
             id:source.id,label:String(source.label||source.id).slice(0,80),
             status:source.status,count,items,source_url:sourceUrl,
+            executed:source.executed===true,
+            provider:String(source.provider||'').slice(0,40),
+            query_url:(()=>{
+              if(!source.query_url)return '';
+              try{const q=new URL(String(source.query_url).slice(0,1600));
+                if(q.protocol!=='https:'||q.username||q.password)throw Error();
+                return q.toString();
+              }catch{throw Error('URL de consulta manual inválida.')}
+            })(),
             observed_at:typeof source.observed_at==='string'&&
               Number.isFinite(Date.parse(source.observed_at))
               ?new Date(source.observed_at).toISOString():null,
@@ -174,7 +183,7 @@
           };
         });
         const record={
-          id:id(),format:'protocolo-osint/investigation-run-v1',
+          id:id(),format:entry.format,
           target:clean,kind:String(entry.kind||'auto').slice(0,32),
           observed_at:typeof entry.observed_at==='string'&&Number.isFinite(Date.parse(entry.observed_at))
             ?new Date(entry.observed_at).toISOString():now(),
@@ -182,8 +191,8 @@
           verification_status:'unverified',
           description:'Retornos de provedores públicos ou motores. Não comprovam identidade, autoria, cobertura ou inexistência.'
         };
-        if(JSON.stringify(record).length>95000)
-          throw new Error('Relatório excedeu o limite local de 95 KB.');
+        if(JSON.stringify(record).length>150000)
+          throw new Error('Relatório excedeu o limite local de 150 KB.');
         record.sha256=await digest(coder.encode(JSON.stringify(record)));
         const old=Array.isArray(c.investigation_runs)?clone(c.investigation_runs):null;
         const history=Array.isArray(c.investigation_runs)?c.investigation_runs:[];

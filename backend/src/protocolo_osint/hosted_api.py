@@ -51,7 +51,7 @@ class SearchRequest(BaseModel):
 
 class LookupRequest(BaseModel):
     value: str = Field(min_length=1, max_length=253)
-    provider: Literal["dns", "certificates", "github"]
+    provider: Literal["dns", "certificates", "github", "github_name"]
 
 
 @app.middleware("http")

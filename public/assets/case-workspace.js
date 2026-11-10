@@ -16,8 +16,11 @@
       for(const r of arr(p.reviews))add(r.observed_at,'review',p.title||'Revisão de plano',r.id,'Revisão manual não verificada');
     }
     events.sort((a,b)=>b.time-a.time||a.kind.localeCompare(b.kind));
+    const runs=arr(c.investigation_runs);
+    for(const run of runs)add(run.saved_at,'results','Relatório de consultas: '+str(run.target),run.id,'Resultados de provedores guardados no cofre');
+    events.sort((a,b)=>b.time-a.time||a.kind.localeCompare(b.kind));
     return {id:str(c.id),title:str(c.title),description:str(c.description),evidence:ev,
-      plans,events,counts:{evidence:ev.length,plans:plans.length,reviews:plans.reduce((n,p)=>n+arr(p.reviews).length,0)}};
+      plans,runs,events,counts:{evidence:ev.length,plans:plans.length,reviews:plans.reduce((n,p)=>n+arr(p.reviews).length,0),reports:runs.length}};
   }
   const api={view};
   root.ProtocoloCaseWorkspaceModel=api;
@@ -33,7 +36,8 @@
   '<button type="button" role="tab" id="cw-tab-overview" aria-controls="cw-pane" data-cw-tab="overview" aria-selected="true" tabindex="0">Resumo</button>'+
   '<button type="button" role="tab" id="cw-tab-timeline" aria-controls="cw-pane" data-cw-tab="timeline" aria-selected="false" tabindex="-1">Linha do tempo</button>'+
   '<button type="button" role="tab" id="cw-tab-evidence" aria-controls="cw-pane" data-cw-tab="evidence" aria-selected="false" tabindex="-1">Evidências</button>'+
-  '<button type="button" role="tab" id="cw-tab-plans" aria-controls="cw-pane" data-cw-tab="plans" aria-selected="false" tabindex="-1">Planos</button></div>'+
+  '<button type="button" role="tab" id="cw-tab-plans" aria-controls="cw-pane" data-cw-tab="plans" aria-selected="false" tabindex="-1">Planos</button>'+
+  '<button type="button" role="tab" id="cw-tab-results" aria-controls="cw-pane" data-cw-tab="results" aria-selected="false" tabindex="-1">Resultados</button></div>'+
   '<div id="cw-pane" role="tabpanel" tabindex="0" aria-labelledby="cw-tab-overview" aria-live="polite"><p class="cw-empty">Selecione um caso na lista.</p></div>'+
   '<p class="cw-footnote">Histórico local, não monitoramento externo. Vínculos documentais não comprovam identidade ou autenticidade. Os controles originais de registros, capturas e relatórios permanecem abaixo.</p>';
   const layout=panel.querySelector('.case-layout');
@@ -63,7 +67,7 @@
     const list=el('div','cw-list');
     if(active==='overview'){
       const metrics=el('div','cw-metrics');
-      for(const [n,label] of [[current.counts.evidence,'Registros'],[current.counts.plans,'Planos'],[current.counts.reviews,'Revisões manuais']]){
+      for(const [n,label] of [[current.counts.evidence,'Registros'],[current.counts.plans,'Planos'],[current.counts.reviews,'Revisões manuais'],[current.counts.reports,'Relatórios']]){
         const m=el('div','cw-metric');m.append(el('b','',n),el('span','',label));metrics.append(m);
       }
       list.append(metrics,item('Atividade mais recente',current.events[0]?.title||'Nenhuma atividade registrada',current.events[0]?fmt(current.events[0].time):''));
@@ -79,11 +83,41 @@
     }else if(active==='plans'){
       if(!current.plans.length)list.append(el('p','cw-empty','Nenhum plano de pesquisa salvo.'));
       for(const p of current.plans.slice(0,30))list.append(item(str(p.title)||'Plano',str(p.query),arr(p.reviews).length+' revisões manuais · '+arr(p.source_ids).length+' fontes escolhidas'));
+    }else if(active==='results'){
+      if(!current.runs.length)list.append(el('p','cw-empty','Nenhuma consulta observada foi salva neste caso. Planos anteriores contêm apenas links preparados.'));
+      for(const run of current.runs.slice().reverse().slice(0,20)){
+        const stats=root.ProtocoloInvestigationReport?.summary(run);
+        const card=item('Consulta: '+str(run.target),
+          stats?stats.returned+' registro(s) retornado(s) · '+stats.with_records+
+            ' fonte(s) com registros · '+stats.failed+' falha(s)':
+            'Relatório de consulta salvo',str(run.saved_at));
+        const details=el('details','cw-results-details');
+        details.append(el('summary','','Ver fontes e registros'));
+        for(const source of arr(run.sources)){
+          const itemLine=el('div','cw-results-source');
+          itemLine.append(el('strong','',str(source.label||source.id)+' · '+str(source.status)+
+            ' · '+(source.count==null?'sem contagem':source.count+' registro(s)')));
+          for(const evidence of arr(source.items).slice(0,35))
+            itemLine.append(el('small','',typeof evidence==='string'?evidence.slice(0,400):JSON.stringify(evidence).slice(0,400)));
+          const href=root.ProtocoloInvestigationReport?.safeLink(source.source_url);
+          if(href){
+            const a=el('a','','Abrir fonte pública');a.href=href;a.target='_blank';a.rel='noopener noreferrer';itemLine.append(a);
+          }
+          details.append(itemLine);
+        }
+        card.append(details);
+        const pdf=el('button','button ghost-button','Baixar PDF deste relatório');
+        pdf.type='button';pdf.addEventListener('click',()=>{
+          try{root.ProtocoloInvestigationReport?.downloadPdf(run)}
+          catch(error){pdf.textContent='PDF indisponível: '+String(error.message).slice(0,100)}
+        });
+        card.append(pdf);list.append(card);
+      }
     }
     pane.replaceChildren(list);
   }
   function selectTab(next,focus=false){
-    if(!['overview','timeline','evidence','plans'].includes(next))return;
+    if(!['overview','timeline','evidence','plans','results'].includes(next))return;
     active=next;
     for(const t of tabs){const selected=t.dataset.cwTab===active;t.setAttribute('aria-selected',String(selected));t.tabIndex=selected?0:-1;if(selected&&focus)t.focus()}
     pane.setAttribute('aria-labelledby','cw-tab-'+active);render();

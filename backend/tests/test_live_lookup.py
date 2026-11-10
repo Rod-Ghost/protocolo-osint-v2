@@ -70,3 +70,45 @@ def test_public_api_separation_and_security():
     assert app_client.post('/api/v1/search/plan',json={'value':'example.org'}).json()['external_requests']==0
     assert app_client.post('/api/v1/lookup',json={'value':'https://example.org','provider':'dns'}).status_code in (422,502)
     assert app_client.get('/api/v1/health').headers['x-content-type-options']=='nosniff'
+
+
+def test_public_fullname_search_returns_only_bounded_candidate_profiles():
+    seen = []
+    def handler(request):
+        seen.append(str(request.url))
+        assert request.url.host == "api.github.com"
+        assert request.url.path == "/search/users"
+        assert '"Bruno Fraga" in:name type:user' == request.url.params["q"]
+        assert request.url.params["per_page"] == "10"
+        return httpx.Response(200, json={
+            "total_count": 183, "incomplete_results": False,
+            "items": [
+                {"login": "example-public", "type": "User",
+                 "html_url": "https://attacker.example/profile"}
+            ],
+        })
+    with mocked_client(handler) as client:
+        result = lookup("Bruno Fraga", "github_name", client=client)
+    assert len(seen) == 1
+    assert result["count"] == 1  # Not total_count=183.
+    assert result["status"] == "observed"
+    assert result["verified"] is False
+    assert result["items"][0]["profile_url"] == "https://github.com/example-public"
+    assert result["source_url"].startswith("https://github.com/search?")
+
+
+@pytest.mark.parametrize("value", [
+    "B; drop table", "foo OR bar", "name:admin test", "bruno@example.org",
+    "a", "a b 123", "john && smith",
+])
+def test_fullname_query_rejects_search_syntax(value):
+    with pytest.raises(LookupError):
+        lookup(value, "github_name")
+
+
+def test_incomplete_fullname_lookup_is_not_reported_as_zero():
+    with mocked_client(lambda _: httpx.Response(200, json={
+        "total_count": 5, "incomplete_results": True, "items": [],
+    })) as client:
+        with pytest.raises(LookupError, match="incompleta"):
+            lookup("Bruno Fraga", "github_name", client=client)

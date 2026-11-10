@@ -120,6 +120,85 @@
         await save(vaultSalt);
         return clone(item);
       },
+      async saveInvestigationRun(caseId,entry){
+        // Explicitly persist REAL provider/worker responses, not prepared links.
+        // This is a bounded, encrypted snapshot. Existing schema v1 is unchanged.
+        assertUnlocked();
+        const c=state.cases.find(x=>x.id===caseId);
+        if(!c)throw new Error('Caso não encontrado no cofre.');
+        if(!entry||entry.format!=='protocolo-osint/investigation-run-v1'||
+           typeof entry.target!=='string'||entry.target.trim().length<2||
+           entry.target.length>253||!Array.isArray(entry.sources)||
+           entry.sources.length<1||entry.sources.length>10)
+          throw new Error('Relatório de consulta inválido.');
+        const supported=new Set(['dns','certificates','github','github_name',
+          'sherlock','maigret','subfinder','amass','spiderfoot']);
+        const statuses=new Set(['observed','no_result','completed','failed','pending','unavailable']);
+        const clean=String(entry.target).trim();
+        const sources=entry.sources.map(source=>{
+          if(!source||!supported.has(source.id)||!statuses.has(source.status)||
+             !Array.isArray(source.items)||source.items.length>80)
+            throw new Error('Fonte ou estado da consulta inválido.');
+          const items=source.items.map(item=>{
+            if(typeof item==='string')return item.slice(0,400);
+            if(!item||typeof item!=='object'||Array.isArray(item))
+              throw new Error('Registro de origem inválido.');
+            const result={};
+            for(const [k,v] of Object.entries(item).slice(0,12)){
+              if(!/^[a-z_]{1,24}$/i.test(k))continue;
+              if(typeof v==='string')result[k]=v.slice(0,500);
+              else if(typeof v==='number'&&Number.isFinite(v))result[k]=v;
+            }
+            return result;
+          });
+          let sourceUrl='';
+          if(source.source_url){
+            const url=String(source.source_url).slice(0,1600);
+            let parsed;
+            try{parsed=new URL(url)}catch{throw new Error('URL da fonte inválida.')}
+            if(parsed.protocol!=='https:'||parsed.username||parsed.password)
+              throw new Error('Fonte deve usar HTTPS sem credenciais.');
+            sourceUrl=parsed.toString();
+          }
+          const count=['observed','no_result','completed'].includes(source.status)
+            ?items.length:null;
+          return {
+            id:source.id,label:String(source.label||source.id).slice(0,80),
+            status:source.status,count,items,source_url:sourceUrl,
+            observed_at:typeof source.observed_at==='string'&&
+              Number.isFinite(Date.parse(source.observed_at))
+              ?new Date(source.observed_at).toISOString():null,
+            job_id:String(source.job_id||'').slice(0,64),
+            notice:String(source.notice||'').slice(0,250),
+            verification_status:'unverified'
+          };
+        });
+        const record={
+          id:id(),format:'protocolo-osint/investigation-run-v1',
+          target:clean,kind:String(entry.kind||'auto').slice(0,32),
+          observed_at:typeof entry.observed_at==='string'&&Number.isFinite(Date.parse(entry.observed_at))
+            ?new Date(entry.observed_at).toISOString():now(),
+          saved_at:now(),sources,
+          verification_status:'unverified',
+          description:'Retornos de provedores públicos ou motores. Não comprovam identidade, autoria, cobertura ou inexistência.'
+        };
+        if(JSON.stringify(record).length>95000)
+          throw new Error('Relatório excedeu o limite local de 95 KB.');
+        record.sha256=await digest(coder.encode(JSON.stringify(record)));
+        const old=Array.isArray(c.investigation_runs)?clone(c.investigation_runs):null;
+        const history=Array.isArray(c.investigation_runs)?c.investigation_runs:[];
+        if(history.length>=20)throw new Error('Limite de 20 relatórios por caso. Faça backup antes de ampliar.');
+        if(history.some(x=>x.sha256===record.sha256))
+          throw new Error('Esta versão do relatório já foi salva neste caso.');
+        c.investigation_runs=[...history,record];
+        try{await save(vaultSalt)}
+        catch(error){
+          if(old)c.investigation_runs=old;
+          else delete c.investigation_runs;
+          throw error;
+        }
+        return clone(record);
+      },
       async reviewSearchPlan(caseId,planId,entry={}){
         assertUnlocked();
         const c=state.cases.find(c=>c.id===caseId);

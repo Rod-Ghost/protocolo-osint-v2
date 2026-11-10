@@ -48,6 +48,12 @@ jobs:
       - run: node tests/test-browser-case-report.cjs
       - run: node --check tests/browser-quick-investigation.cjs
       - run: node --check tests/browser-save-plan-no-case.cjs
+      - run: node --check tests/browser-observed-results.cjs
+      - run: node --check apps/web/assets/investigation-report.js
+      - run: node --check public/assets/investigation-report.js
+      - run: node --check apps/web/assets/investigation-results-ui.js
+      - run: node --check public/assets/investigation-results-ui.js
+      - run: node --test tests/test-investigation-report.cjs
       - run: node --check apps/web/assets/case-search-builder.js
       - run: node --check public/assets/case-search-builder.js
       - run: node tests/test-case-search-builder.cjs

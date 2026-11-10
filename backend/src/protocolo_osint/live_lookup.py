@@ -20,6 +20,7 @@ PROVIDERS = {
     "dns": {"name": "DNS público", "accepts": "domain", "upstream": "Cloudflare DNS-over-HTTPS"},
     "certificates": {"name": "Certificados TLS", "accepts": "domain", "upstream": "crt.sh"},
     "github": {"name": "Perfil público no GitHub", "accepts": "username_candidate", "upstream": "GitHub REST API"},
+    "github_name": {"name": "Candidatos por nome no GitHub", "accepts": "free_text", "upstream": "GitHub Search Users API"},
 }
 
 
@@ -60,6 +61,14 @@ def _valid_username(value: str) -> bool:
             all(c.isascii() and (c.isalnum() or c == "-") for c in value))
 
 
+def _valid_full_name(value: str) -> bool:
+    """Only ordinary human-readable names. No GitHub search operators."""
+    return (3 <= len(value) <= 80 and 2 <= len(value.split()) <= 7 and
+            not any(word.upper() in {"AND", "OR", "NOT"} for word in value.split()) and
+            all(c.isalpha() or c in " -'." for c in value) and
+            all(any(ch.isalpha() for ch in part) for part in value.split()))
+
+
 def lookup(value: str, provider: str, *, client: httpx.Client | None = None) -> dict[str, Any]:
     """Query exactly one allowlisted service, never an arbitrary target URI.
 
@@ -75,6 +84,11 @@ def lookup(value: str, provider: str, *, client: httpx.Client | None = None) -> 
         value = value.lstrip("@")
         if not _valid_username(value):
             raise LookupError("Informe um username válido do GitHub (até 39 caracteres).")
+    if provider == "github_name":
+        value = " ".join(value.split())
+        if not _valid_full_name(value):
+            raise LookupError("A pesquisa por nome exige 2 a 7 palavras comuns, sem operadores.")
+
     observed_at = datetime.now(timezone.utc).isoformat()
     own_client = client is None
     client = client or httpx.Client(trust_env=False)
@@ -116,6 +130,30 @@ def lookup(value: str, provider: str, *, client: httpx.Client | None = None) -> 
                 if len(results) >= 25:
                     break
             source_url = f"https://crt.sh/?q={quote(value, safe='')}"
+        elif provider == "github_name":
+            expression = f'"{value}" in:name type:user'
+            payload = _safe_get_json(
+                client, "https://api.github.com/search/users",
+                params={"q": expression, "per_page": "10", "page": "1"},
+            )
+            if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+                raise LookupError("Busca de usuários retornou formato inesperado.")
+            if payload.get("incomplete_results") is True:
+                raise LookupError("Busca de usuários foi incompleta. Nenhuma contagem confirmada.")
+            results = []
+            for item in payload["items"][:10]:
+                if not isinstance(item, dict):
+                    continue
+                login = item.get("login")
+                if not isinstance(login, str) or not _valid_username(login):
+                    continue
+                results.append({
+                    "login": login,
+                    "profile_url": f"https://github.com/{quote(login, safe='')}",
+                    "type": str(item.get("type", "User"))[:32],
+                })
+            source_url = ("https://github.com/search?q=" +
+                          quote(expression, safe="") + "&type=users")
         else:
             payload = _safe_get_json(client, f"https://api.github.com/users/{quote(value, safe='')}")
             results = []

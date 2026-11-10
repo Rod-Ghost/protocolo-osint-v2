@@ -10,6 +10,7 @@ on:
       - 'tests/browser-guided-workflow.cjs'
       - 'tests/browser-case-workspace.cjs'
       - 'tests/browser-quick-investigation.cjs'
+      - 'tests/browser-save-plan-no-case.cjs'
       - 'apps/web/assets/compact-investigation.css'
       - 'public/assets/compact-investigation.css'
       - 'apps/web/assets/app.js'
@@ -63,6 +64,18 @@ jobs:
         run: node tests/browser-case-workspace.cjs
       - name: Quick investigation and encrypted save regression
         run: node tests/browser-quick-investigation.cjs
+      - name: Save plan when no case exists (inline create, encrypted persistence)
+        run: node tests/browser-save-plan-no-case.cjs
+      - name: Save inline-save UX review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: save-plan-inline-ux
+          path: |
+            test-artifacts/save-plan-inline-desktop.png
+            test-artifacts/save-plan-inline-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save quick investigation review screenshots
         if: always()
         uses: actions/upload-artifact@v4

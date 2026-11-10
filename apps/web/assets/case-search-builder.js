@@ -120,8 +120,14 @@
     }
     const data=await vault().listCases();
     for(const c of data){const option=create('option','',c.title);option.value=c.id;select.append(option)}
-    if(data.some(x=>x.id===current))select.value=current;
+    const desired=data.some(x=>x.id===current)?current:
+      (data.length===1?data[0].id:'');
+    if(desired)select.value=desired;
     state.caseId=select.value;
+    // Explicitly show the next required action; never silently save a plan.
+    $('#cb-save',block).disabled=!state.planned||!canSave()||!state.caseId;
+    if(data.length && !state.caseId)
+      message.textContent='Selecione o caso que receberá o plano de investigação.';
     return data;
   }
   function renderResults(data){
@@ -152,6 +158,7 @@
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(String(data.detail||'Não foi possível construir a pesquisa.'));
       state.planned={payload,data};state.editing=null;
+      if(canSave())await loadCases();
       $('#cb-save',block).disabled=!canSave()||!$('#cb-case',block).value;
       renderResults(data);
       message.textContent='Plano pronto: '+data.total+' links. Abra fontes individualmente e registre suas descobertas.';
@@ -303,4 +310,26 @@
   });
   // Existing app vault may be unlocked after initial paint.
   $('#cb-case',block).addEventListener('focus',()=>loadCases().catch(e=>message.textContent=e.message));
+  window.addEventListener('protocolo:vault-change',()=>{
+    if(!canSave()){state.caseId='';state.planned=null;$('#cb-save',block).disabled=true;}
+    loadCases().catch(e=>{message.textContent=e.message});
+  });
+  document.addEventListener('protocolo:case-created',event=>{
+    const id=event.detail?.caseId;
+    if(typeof id!=='string'||!id)return;
+    state.caseId=id;
+    loadCases().catch(e=>{message.textContent=e.message});
+  });
+  document.addEventListener('protocolo:prepare-investigation',async event=>{
+    const raw=event.detail;
+    if(!raw||typeof raw.query!=='string'||raw.query.trim().length<2)return;
+    await sourcesReady;
+    $('#cb-query',block).value=raw.query.trim().slice(0,240);
+    const allowed=['auto','domain','username_candidate','email','ip','url','free_text'];
+    $('#cb-kind',block).value=allowed.includes(raw.kind)?raw.kind:'auto';
+    $('#cb-query',block).dispatchEvent(new Event('input',{bubbles:true}));
+    $('#cb-kind',block).dispatchEvent(new Event('change',{bubbles:true}));
+    if(canSave())await loadCases();
+    block.scrollIntoView({block:'start',behavior:'smooth'});
+  });
 })();

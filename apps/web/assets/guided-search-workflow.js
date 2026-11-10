@@ -224,6 +224,7 @@
   function changeStep(step,{focus=false}={}){
     if(!Number.isInteger(step)||step<0||step>=stage.length)return;
     state.step=step;present();
+    if(step===3)document.dispatchEvent(new Event('protocolo:save-step-open'));
     if(focus){
       const heading=stage[step].querySelector('.wf-stage-head h3');
       heading.setAttribute('tabindex','-1');heading.focus();

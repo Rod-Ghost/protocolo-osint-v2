@@ -39,7 +39,7 @@ def _safe_get_json(client: httpx.Client, url: str, params: dict[str, str] | None
         raise LookupError("Provedor de consulta não autorizado.")
     try:
         with client.stream("GET", url, params=params, timeout=TIMEOUT_SECONDS, follow_redirects=False,
-                           headers={"Accept": "application/dns-json" if parsed.host == "cloudflare-dns.com" else "application/json", "User-Agent": "ProtocoloOSINT/0.4 (+public research)"}) as response:
+                           headers={"Accept": "application/dns-json" if parsed.host == "cloudflare-dns.com" else "application/json", "User-Agent": "ProtocoloOSINT/1.2 (+https://github.com/Rod-Ghost/protocolo-osint-v2)"}) as response:
             if response.status_code == 404:
                 return None
             if response.status_code != 200:

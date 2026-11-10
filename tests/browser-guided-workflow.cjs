@@ -135,7 +135,7 @@ async function run(){
     await page.locator('#cb-case').selectOption({label:'Caso demonstrativo — investigação guiada'});
     assert.equal(await page.locator('#cb-save').isEnabled(),true);
     await page.locator('#cb-save').click();
-    await page.locator('#cb-state').getByText('Plano salvo no cofre criptografado',{exact:false}).waitFor();
+    await page.locator('#cb-state').getByText('Salvo e confirmado no cofre',{exact:false}).waitFor();
     const saved=await page.evaluate(async()=>{
       const cases=await browserVault.listCases();
       const item=await browserVault.getCase(cases[0].id);

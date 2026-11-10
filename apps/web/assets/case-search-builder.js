@@ -130,7 +130,10 @@
       const values=[...new Set(state.sources.map(x=>x.category))].sort();
       for(const value of values){const opt=create('option','',value);opt.value=value;category.append(opt)}
       showSources();
-      for(const id of ['google','bing','duckduckgo','google-pdf']){
+      // Preserve legacy link defaults and include reviewed API-backed sources
+      // so a single explicit lookup has actual connector candidates.
+      for(const id of ['google','bing','duckduckgo','google-pdf',
+        'github-users','wikidata','openalex','crt','dns-public']){
         const cb=list.querySelector('input[value="'+id+'"]');
         if(cb)cb.checked=true;
       }

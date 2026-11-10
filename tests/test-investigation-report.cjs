@@ -51,7 +51,22 @@ test('PDF remains an honest report for failed providers without fictional hits',
  const bytes=model.pdfBytes({target:'example.org',kind:'domain',
    sources:[model.failure('dns','DNS público','HTTP 502')]});
  const pdf=Buffer.from(bytes).toString('latin1');
- assert.match(pdf,/quantidade desconhecida/);
+ assert.match(pdf,/sem contagem confirmada/);
  assert.match(pdf,/Falhas: 1/);
- assert.throws(()=>model.pdfBytes({sources:Array(19).fill({})}),/inválido/);
+ assert.throws(()=>model.pdfBytes({sources:Array(66).fill({})}),/inválido/);
+});
+
+test('48+ catalogue sources fit PDF without inventing API counts',()=>{
+ const sources=Array.from({length:49},(_,i)=>({
+   id:'manual-'+i,label:'Fonte manual '+i,status:'not_queried',count:null,
+   items:[],query_url:'https://example.org/search?q=s'+i,
+   notice:'Não foi realizada nenhuma consulta externa nesta fonte.'
+ }));
+ const bytes=model.pdfBytes({target:'Test Person',kind:'free_text',sources});
+ const pdf=Buffer.from(bytes).toString('latin1');
+ assert.match(pdf,/49 entradas/);
+ assert.match(pdf,/NAO CONSULTADA/);
+ assert.match(pdf,/0 efetivamente consultadas/);
+ assert.match(pdf,/\/URI \(https:\/\/example\.org\/search\?q=s0\)/);
+ assert.match(pdf,/\/Count [2-9]/);
 });

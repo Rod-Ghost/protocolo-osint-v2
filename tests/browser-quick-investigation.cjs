@@ -73,6 +73,9 @@ async function run(){
   assert.equal(await page.locator('#cb-query').inputValue(),'example.org');
   assert.equal(await page.locator('#cb-kind').inputValue(),'domain');
   await page.locator('#wf-next').click();
+  await page.locator('#cb-compatible').click();
+  assert.equal(await page.locator('#wf-selected-count').innerText(),'3');
+  assert.equal(requests.length,0,'Selecting sources must not query the Internet');
   await page.locator('#wf-next').click();
   await page.locator('#cb-generate').click();
   await page.locator('#cb-results .cb-count').waitFor();

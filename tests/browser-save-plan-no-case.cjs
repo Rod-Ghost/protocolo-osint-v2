@@ -114,7 +114,7 @@ async function main(){
   assert(persisted.every(c=>c.search_plans.length===1));
   // After a reload with multiple cases, require explicit destination.
   await page.locator('#primary-nav [data-view=sources]').click();
-  await page.locator('#cb-refresh-cases').click();
+  await page.waitForFunction(()=>document.querySelector('#cb-case')?.options.length===4);
   assert.equal(await page.locator('#cb-case').inputValue(),'');
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('PASS: no-case save, inline creation, 2 cases, vault lock, persisted plans, mobile');

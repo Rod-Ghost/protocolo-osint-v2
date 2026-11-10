@@ -38,6 +38,7 @@
       'Outras fontes recebem o termo original.</p>'+
       '<div class="cb-source-head"><strong>Fontes do catálogo</strong>'+
         '<label>Categoria <select id="cb-category"><option value="">Todas</option></select></label>'+
+        '<button id="cb-compatible" type="button" class="button ghost-button">Todas compatíveis</button>'+
         '<button id="cb-select" type="button" class="button ghost-button">Selecionar visíveis</button>'+
         '<button id="cb-clear" type="button" class="button ghost-button">Limpar</button></div>'+
       '<div id="cb-source-list" class="cb-source-list" role="group" aria-label="Selecionar fontes"></div>'+
@@ -257,6 +258,16 @@
     }
   }
   $('#cb-category',block).addEventListener('change',showSources);
+  $('#cb-compatible',block).addEventListener('click',()=>{
+    const kind=$('#cb-kind',block).value;
+    const compatible=new Set(state.sources.filter(src=>kind==='auto'||
+      (Array.isArray(src.kinds)&&src.kinds.includes(kind))).slice(0,60).map(src=>src.id));
+    const boxes=[...list.querySelectorAll('input[type=checkbox]')];
+    for(const cb of boxes)cb.checked=compatible.has(cb.value);
+    // Trigger the existing stale-plan guard and selection counter.
+    boxes[0]?.dispatchEvent(new Event('change',{bubbles:true}));
+    message.textContent=compatible.size+' fontes compatíveis selecionadas. Nenhuma foi consultada.';
+  });
   $('#cb-select',block).addEventListener('click',()=>{
     for(const cb of list.querySelectorAll('label:not([hidden]) input'))cb.checked=true;
   });

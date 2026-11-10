@@ -227,7 +227,7 @@
     }catch(error){message.textContent='Não foi possível preparar: '+error.message;state.planned=null;$('#cb-save',block).disabled=true;return false}
     finally{submit.disabled=false}
   }
-  async function savePlan(){
+  async function savePlan({withoutPrompt=false}={}){
     if(saving)return;
     saving=true;refreshSaveControls();
     let createdId='';
@@ -252,7 +252,8 @@
       if(!createdId && !await vault().getCase(id))
         throw Error('O caso não está mais disponível neste cofre. Atualize a lista.');
       const p=state.planned.payload;
-      const title=prompt('Título do plano de busca',p.value.slice(0,70))||p.value.slice(0,70);
+      const title=withoutPrompt?p.value.slice(0,70):
+        (prompt('Título do plano de busca',p.value.slice(0,70))||p.value.slice(0,70));
       const item=await vault().saveSearchPlan(id,{
         id:state.editing?.caseId===id?state.editing?.planId:undefined,
         title,query:p.value,kind:p.kind,source_ids:p.source_ids,
@@ -412,7 +413,7 @@
   // engine run or external source visit. isCurrent checks the exact payload.
   window.ProtocoloCaseSearchBuilder=Object.freeze({
     prepare:()=>generate(),
-    save:()=>savePlan(),
+    save:()=>savePlan({withoutPrompt:true}),
     isCurrent:()=>{
       try{return !!state.planned &&
         JSON.stringify(formPayload())===JSON.stringify(state.planned.payload)}

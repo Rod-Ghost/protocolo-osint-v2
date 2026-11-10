@@ -223,7 +223,8 @@
       refreshSaveControls();
       renderResults(data);
       message.textContent='Plano pronto: '+data.total+' links. Abra fontes individualmente e registre suas descobertas.';
-    }catch(error){message.textContent=error.message;state.planned=null;$('#cb-save',block).disabled=true}
+      return true;
+    }catch(error){message.textContent='Não foi possível preparar: '+error.message;state.planned=null;$('#cb-save',block).disabled=true;return false}
     finally{submit.disabled=false}
   }
   async function savePlan(){
@@ -262,10 +263,13 @@
       await renderLibrary();
       message.textContent='Salvo e confirmado no cofre: '+(createdId?'caso criado e ':'')+
         'plano vinculado ao caso. Disponível em Meus casos.';
+      document.dispatchEvent(new CustomEvent('protocolo:plan-saved',{detail:{caseId:id,planId:item.id}}));
+      return true;
     }catch(error){
       message.textContent=(createdId?
         'O caso foi criado, mas o plano ainda não foi salvo: ':
         'Não foi possível salvar: ')+error.message;
+      return false;
     }finally{
       saving=false;refreshSaveControls();
     }
@@ -404,6 +408,19 @@
     }catch(error){message.textContent='Não foi possível abrir o plano: '+error.message}
   });
   // Existing app vault may be unlocked after initial paint.
+  // An explicit, safe integration point for the guided final step. No implicit
+  // engine run or external source visit. isCurrent checks the exact payload.
+  window.ProtocoloCaseSearchBuilder=Object.freeze({
+    prepare:()=>generate(),
+    save:()=>savePlan(),
+    isCurrent:()=>{
+      try{return !!state.planned &&
+        JSON.stringify(formPayload())===JSON.stringify(state.planned.payload)}
+      catch{return false}
+    },
+    selectedCase:()=>$('#cb-case',block).value,
+    unlocked:canSave
+  });
   $('#cb-case',block).addEventListener('focus',()=>loadCases().catch(e=>message.textContent=e.message));
   document.addEventListener('protocolo:save-step-open',()=>loadCases().catch(e=>message.textContent=e.message));
   loadCases().catch(e=>{message.textContent=e.message});

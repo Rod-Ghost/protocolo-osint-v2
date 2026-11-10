@@ -53,6 +53,12 @@ async function main(){
     count:1,observed_at:'2026-11-10T12:00:00Z',
     source_url:'https://cloudflare-dns.com/dns-query',verified:false
    });
+   if(body.provider==='github_name')return reply({
+    provider:'github_name',provider_name:'Candidatos por nome no GitHub',query:body.value,
+    status:'observed',items:[{login:'candidate-example',profile_url:'https://github.com/candidate-example'}],
+    count:1,observed_at:'2026-11-10T12:00:03Z',
+    source_url:'https://github.com/search?q=Test%20Example&type=users',verified:false
+   });
    if(body.provider==='certificates')return reply({
     provider:'certificates',provider_name:'Certificados TLS',query:body.value,
     status:'no_result',items:[],count:0,observed_at:'2026-11-10T12:00:02Z',
@@ -154,6 +160,20 @@ async function main(){
   await page.locator('#cw-pane').getByText('Baixar PDF deste relatório').click();
   const dl=await again;
   assert.match(dl.suggestedFilename(),/\.pdf$/);
+
+  // User-entered full names give public-profile CANDIDATES, never identity proof.
+  await page.locator('#primary-nav [data-view=sources]').click();
+  await page.locator('#wf-progress [data-wf-step="0"]').click();
+  await page.locator('#cb-query').fill('Test Example');
+  await page.locator('#cb-kind').selectOption('free_text');
+  await page.locator('#wf-progress [data-wf-step="3"]').click();
+  await page.locator('#ir-run').click();
+  await page.locator('#ir-list .ir-observed').waitFor();
+  const names=await page.evaluate(()=>ProtocoloInvestigationUI.view());
+  assert.equal(names.summary.returned,1);
+  assert.equal(names.run.sources[0].id,'github_name');
+  assert.equal(calls.at(-1).body.provider,'github_name');
+  assert.match(await page.locator('#ir-panel').innerText(),/Candidatos por nome no GitHub/);
   assert.deepEqual(errors,[]);
   assert.deepEqual(outsiders,[]);
   console.log('PASS: real provider records, per-source status, authorized queued motor, linked PDF, vault archive, mobile, reload');

@@ -149,7 +149,67 @@
     node('p','wf-stage-tip','Após gerar, use “Abrir fonte” para consultar o provedor original manualmente.'));
 
   const saveBar=node('div','wf-save-actions');
-  saveBar.append(save);
+  const prepareSave=node('button','button primary-button','Preparar e salvar plano no caso');
+  prepareSave.type='button';prepareSave.id='wf-prepare-save';
+  prepareSave.title='Prepara links de fontes selecionadas e grava o plano no cofre local, somente após este clique';
+  const finish=node('button','button ghost-button','Abrir Meus casos');
+  finish.id='wf-finish';finish.type='button';finish.hidden=true;
+  finish.addEventListener('click',()=>{
+    document.querySelector('#primary-nav [data-view="cases"]')?.click();
+  });
+  const saveHint=node('p','wf-save-hint','');
+  saveHint.id='wf-save-hint';saveHint.setAttribute('role','status');
+  saveBar.append(prepareSave,save,finish,saveHint);
+  let quickSaveBusy=false,quickSaveSuccess=false;
+  const builder=()=>window.ProtocoloCaseSearchBuilder;
+  const preparedNow=()=>!!builder()?.isCurrent();
+  function updateFinalActions(){
+    const ready=preparedNow(),inFinal=state.step===3;
+    // The previous save button is retained for existing workflows,
+    // and a new always-actionable CTA handles the unprepared path.
+    prepareSave.hidden=ready || quickSaveSuccess;
+    save.hidden=!ready || quickSaveSuccess;
+    finish.hidden=!quickSaveSuccess;
+    prepareSave.disabled=quickSaveBusy;
+    saveHint.textContent=quickSaveSuccess?
+      'Plano salvo no cofre. Nenhuma pesquisa externa foi executada.':
+      !ready&&inFinal?
+        'O plano ainda não foi preparado. Clique em “Preparar e salvar plano no caso” para concluir nesta tela.':
+        ready&&inFinal?'Plano pronto. Clique em “Salvar plano no caso” para registrar.':'';
+  }
+  async function prepareAndSave(){
+    if(quickSaveBusy)return;
+    if(!validate(0)){changeStep(0,{focus:true});return}
+    if(!validate(1)){changeStep(1,{focus:true});return}
+    if(!builder()?.unlocked()){
+      message.textContent='Para salvar, abra o cofre em Meus casos e retorne à investigação.';
+      $('#cb-open-vault')?.focus();return;
+    }
+    if(!builder()?.selectedCase()){
+      message.textContent='Selecione um caso existente ou crie um nesta etapa antes de salvar.';
+      $('#cb-case')?.focus();return;
+    }
+    quickSaveBusy=true;prepareSave.textContent='Preparando e salvando…';updateFinalActions();
+    try{
+      // Keep the user in step 4 while the result list updates.
+      // Builder enforces stale-plan validation and encryption.
+      const prepared=await builder().prepare();
+      if(!prepared)return;
+      const saved=await builder().save();
+      if(saved){quickSaveSuccess=true;message.textContent='Investigação salva no cofre. Abra Meus casos para consultar o plano.'}
+    }catch(error){message.textContent='Não foi possível concluir: '+error.message}
+    finally{
+      quickSaveBusy=false;
+      prepareSave.textContent='Preparar e salvar plano no caso';
+      updateFinalActions();refresh();
+    }
+  }
+  prepareSave.addEventListener('click',prepareAndSave);
+  document.addEventListener('protocolo:plan-saved',()=>{
+    if(state.step===3){quickSaveSuccess=true;updateFinalActions();refresh()}
+  });
+  // Invalidate final confirmation whenever the source/target changes.
+
   const reviewLinks=node('button','wf-inline-link','Revisar links preparados');
   reviewLinks.type='button';reviewLinks.id='wf-review-links';
   const enginesLink=node('button','button ghost-button','Consultar motores autorizados');
@@ -185,6 +245,8 @@
 
   function refresh(){
     const selected=countSelected(),count=sources.querySelectorAll('input[type=checkbox]').length;
+    state.prepared=preparedNow();
+    updateFinalActions();
     $('#wf-selected-count').textContent=String(selected);
     $('#wf-catalog-count').textContent=count?String(count):'—';
     $('#wf-overview-title').textContent=query.value.trim()||'Nova estratégia';
@@ -244,8 +306,23 @@
     }
     return true;
   }
-  next.addEventListener('click',()=>{
-    if(validate(state.step))changeStep(state.step+1,{focus:true});
+  next.addEventListener('click',async()=>{
+    if(!validate(state.step))return;
+    if(state.step===2&&!preparedNow()){
+      if(quickSaveBusy)return;
+      quickSaveBusy=true;next.disabled=true;
+      next.textContent='Preparando consultas…';
+      try{
+        const ok=await builder()?.prepare();
+        if(ok)changeStep(3,{focus:true});
+      }catch(error){message.textContent='Não foi possível preparar: '+error.message}
+      finally{
+        quickSaveBusy=false;next.disabled=false;
+        next.textContent='Continuar para o caso';refresh();
+      }
+      return;
+    }
+    changeStep(state.step+1,{focus:true});
   });
   back.addEventListener('click',()=>changeStep(state.step-1,{focus:true}));
   reviewLinks.addEventListener('click',()=>changeStep(2,{focus:true}));
@@ -265,6 +342,9 @@
   // A changed target/source/filter makes old preview stale. Keep the original
   // API builder as the owner of URLs and validation; just hide old UI output.
   function changed(event){
+    if(event.target?.matches?.('#cb-query,#cb-kind,#cb-site,#cb-file,#cb-exclude,#cb-exact,#cb-source-list input')){
+      quickSaveSuccess=false;
+    }
     if(event.target?.matches?.(
       '#cb-query,#cb-kind,#cb-site,#cb-file,#cb-exclude,#cb-exact,#cb-source-list input')){
       if(state.prepared){
@@ -291,10 +371,10 @@
       refresh();
     });
   }
-  // The original case selector may re-enable its save button on change.
-  // A stale configuration must never be saved just by switching cases.
+  // Preserve the selected case, but never claim a different case is saved.
   $('#cb-case').addEventListener('change',()=>{
-    if(!state.prepared)save.disabled=true;
+    quickSaveSuccess=false;
+    if(!preparedNow())save.disabled=true;
     refresh();
   });
   form.addEventListener('submit',()=>{
@@ -306,7 +386,7 @@
     if(results.querySelector('.cb-count')?.textContent?.includes('links preparados')){
       state.prepared=true;
       // Saved plans opened from other modules must reveal their result links.
-      if(state.mode==='guided'&&state.step!==2)changeStep(2);
+      if(state.mode==='guided'&&state.step!==2&&!quickSaveBusy)changeStep(2);
     }
     refresh();
   }).observe(results,{childList:true});
@@ -314,7 +394,9 @@
   document.addEventListener('protocolo:open-plan',()=>{
     if(state.mode==='guided')changeStep(2);
   });
-  window.addEventListener('protocolo:vault-change',refresh);
+  window.addEventListener('protocolo:vault-change',()=>{
+    quickSaveSuccess=false;refresh();
+  });
   present();
   window.ProtocoloGuidedWorkflow=Object.freeze({
     changeStep,

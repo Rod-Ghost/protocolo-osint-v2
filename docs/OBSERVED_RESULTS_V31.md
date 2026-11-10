@@ -17,10 +17,11 @@ Na Etapa 4 do construtor, a área **Resultados no próprio sistema** permite:
 | Domínio | DNS A/MX/NS da Cloudflare, CT via crt.sh | Máximo 40 registros DNS e 25 registros CT; não exaustivo |
 | Username | API pública GitHub, se username for compatível | Presença do perfil naquele provedor, sem provar identidade |
 | URL HTTPS | Apenas domínio extraído para DNS e CT | Não acessa o URL completo e não examina conteúdo da página |
-| Nome, e-mail, IP, texto livre | Sem provedor fixo automático nesta etapa | Não exibe zero fictício; motores opcionais conforme autorização e capacidade real |
+| Nome completo, digitado em texto livre | Busca pública de usuários por nome exibido via GitHub Search (até 10 candidatos) | São perfis candidatos; não comprova que pertencem à pessoa investigada; API sem autenticação pode limitar 10 requisições/minuto |
+| E-mail, IP ou texto que não seja nome | Sem provedor fixo automático nesta etapa | Não exibe zero fictício; motores opcionais conforme autorização e capacidade real |
 | Motores | Sherlock, Maigret, subfinder, Amass, SpiderFoot conforme roteamento | Saída técnica do worker não verificada; pode falhar ou ficar pendente |
 
-Todos os provedores públicos já existiam no backend; nenhum motor novo, conta paga ou scraping ad hoc foi introduzido. O backend continua com limites fixos e sem URL arbitrária. A pesquisa para nome próprio exige motor autorizado configurado, não é prometida pelo catálogo público.
+DNS, CT e busca por username já existiam no backend. Para nomes completos, foi adicionada uma consulta restrita e documentada à API oficial de pesquisa de usuários do GitHub, sem token, sem scraping e com limite de 10 retornos. Nenhum motor novo nem conta paga foi introduzido. O backend continua com destinos HTTPS fixos e sem URL arbitrária. A pesquisa de nomes está sujeita aos limites oficiais do GitHub e pode retornar 403/429, reportados como falha, não ausência de perfis. A busca por nome próprio no GitHub é limitada a candidatos públicos desse provedor; investigações mais amplas de pessoas exigem outros provedores homologados ou motor autorizado e operacional.
 
 ## Proveniência, segurança e privacidade
 - O PDF não significa laudo ou prova de autoria. Preserva o status, fonte, horário devolvido pelo provedor e os registros da API, dentro do limite.

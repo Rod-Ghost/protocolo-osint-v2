@@ -131,7 +131,7 @@
            entry.target.length>253||!Array.isArray(entry.sources)||
            entry.sources.length<1||entry.sources.length>10)
           throw new Error('Relatório de consulta inválido.');
-        const supported=new Set(['dns','certificates','github',
+        const supported=new Set(['dns','certificates','github','github_name',
           'sherlock','maigret','subfinder','amass','spiderfoot']);
         const statuses=new Set(['observed','no_result','completed','failed','pending','unavailable']);
         const clean=String(entry.target).trim();

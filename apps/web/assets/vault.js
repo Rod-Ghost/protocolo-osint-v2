@@ -131,14 +131,24 @@
            entry.target.length>253||!Array.isArray(entry.sources)||
            entry.sources.length<1||entry.sources.length>65)
           throw new Error('Relatório de consulta inválido.');
-        const supported=new Set(['dns','certificates','github','github_name',
-          'sherlock','maigret','subfinder','amass','spiderfoot']);
+        // Catalogue IDs evolve independently of the browser vault.
+        // A format-restricted ID avoids rejecting valid manual source records.
+        const sourceId=/^[a-z0-9-]{1,60}$/;
         const statuses=new Set(['observed','no_result','completed','failed','pending','unavailable','not_queried','incompatible']);
         const clean=String(entry.target).trim();
         const sources=entry.sources.map(source=>{
-          if(!source||!supported.has(source.id)||!statuses.has(source.status)||
+          if(!source||typeof source.id!=='string'||!sourceId.test(source.id)||
+             !statuses.has(source.status)||
              !Array.isArray(source.items)||source.items.length>80)
             throw new Error('Fonte ou estado da consulta inválido.');
+          if(entry.format==='protocolo-osint/investigation-run-v2'){
+            if(['observed','no_result','failed'].includes(source.status)&&
+               source.executed!==true)
+              throw new Error('Fonte marcada como consultada sem execução registrada.');
+            if(['not_queried','incompatible'].includes(source.status)&&
+               source.executed===true)
+              throw new Error('Fonte não consultada não pode indicar execução.');
+          }
           const items=source.items.map(item=>{
             if(typeof item==='string')return item.slice(0,400);
             if(!item||typeof item!=='object'||Array.isArray(item))

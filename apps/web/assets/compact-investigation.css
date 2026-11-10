@@ -82,3 +82,12 @@
  .cb-vault-help .button{width:100%}
  .wf-enabled #cb-save{width:100%;white-space:normal}
 }
+
+/* Step 4 must expose exactly one primary action at a time. */
+.wf-save-actions [hidden]{display:none!important}
+.wf-save-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.wf-save-actions #wf-prepare-save{min-height:46px;white-space:normal;text-align:center}
+.wf-save-actions #wf-finish{min-height:44px}
+.wf-save-hint{flex-basis:100%;font-size:12px;line-height:1.6;color:#c6d4e7;margin:0}
+.light .wf-save-hint{color:#345263}
+@media(max-width:620px){.wf-save-actions>button{width:100%}}

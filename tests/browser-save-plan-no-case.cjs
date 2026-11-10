@@ -116,6 +116,45 @@ async function main(){
   await page.locator('#primary-nav [data-view=sources]').click();
   await page.waitForFunction(()=>document.querySelector('#cb-case')?.options.length===4);
   assert.equal(await page.locator('#cb-case').inputValue(),'');
+
+  // Reproduce user screenshot: an EXISTING selected case, but the final
+  // step reports "Ainda não preparado", with no previous generation.
+  await page.locator('#cb-query').fill('example.net');
+  await page.locator('#cb-kind').selectOption('domain');
+  await page.locator('#wf-next').click();
+  await page.locator('#cb-source-list input[value=bing]').check();
+  await page.locator('#wf-progress [data-wf-step="3"]').click();
+  await page.locator('#wf-prepare-save:visible').waitFor();
+  assert.match(await page.locator('#wf-draft-status').innerText(),/Ainda não preparado/);
+  await page.locator('#cb-case').selectOption({label:'Caso criado no próprio salvamento'});
+  assert.equal(await page.locator('#wf-prepare-save').isEnabled(),true);
+  const before=builders.length;
+  await page.screenshot({path:'test-artifacts/save-step4-unprepared-desktop.png',fullPage:false});
+  await page.locator('#wf-prepare-save').click();
+  await page.locator('#wf-finish:visible').waitFor();
+  assert.equal(builders.length,before+1);
+  const updated=await page.evaluate(async()=>{
+   const all=await browserVault.listCases();
+   const first=all.find(c=>c.title==='Caso criado no próprio salvamento');
+   return browserVault.getCase(first.id);
+  });
+  assert.deepEqual(updated.search_plans.map(p=>p.query).sort(),['example.net','example.org'].sort());
+  assert.equal(await page.locator('#wf-prepare-save').isVisible(),false);
+  await page.locator('#wf-finish').click();
+  await page.locator('#panel-cases:visible').waitFor();
+
+  // Normal "Continuar para o caso" must ALSO prepare links before showing
+  // final step: no separate hidden button or manual back navigation.
+  await page.locator('#primary-nav [data-view=sources]').click();
+  await page.locator('#wf-progress [data-wf-step="0"]').click();
+  await page.locator('#cb-query').fill('example.edu');
+  await page.locator('#wf-next').click();
+  await page.locator('#wf-next').click();
+  await page.locator('#wf-next').click();
+  await page.locator('.wf-stage[data-wf-stage="3"]:visible').waitFor();
+  assert.equal(await page.locator('#cb-save').isVisible(),true);
+  assert.equal(await page.locator('#cb-save').isEnabled(),true);
+  assert.match(await page.locator('#wf-draft-status').innerText(),/Links preparados/);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('PASS: no-case save, inline creation, 2 cases, vault lock, persisted plans, mobile');
  }finally{await context.close();await browser.close();server.close()}

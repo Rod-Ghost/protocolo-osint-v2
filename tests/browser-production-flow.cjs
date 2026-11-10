@@ -57,7 +57,7 @@ async function flow(page) {
   await page.locator('#cb-refresh-cases').click();
   await page.locator('#cb-case').selectOption({label:'Caso E2E público example.org'});
   await page.locator('#cb-save').click();
-  await page.getByText('Plano salvo no cofre criptografado, vinculado ao caso.').waitFor({timeout});
+  await page.locator('#cb-state').getByText(/Salvo e confirmado no cofre/).waitFor({timeout});
 
   await page.locator('#primary-nav [data-view="dashboard"]').click();
   await page.locator('#dc-metrics .dc-metric').first().waitFor({timeout});

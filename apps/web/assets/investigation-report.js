@@ -117,6 +117,7 @@
           item.data||item.id||'Registro sem rotulo',100);
         const detail=[
           item.description, item.type,
+          item.data!=null?'Dado: '+item.data:'',
           item.works_count!=null?'Trabalhos: '+item.works_count:'',
           item.ttl!=null?'TTL: '+item.ttl:''
         ].filter(Boolean).map(x=>trim(x,110)).join(' | ');

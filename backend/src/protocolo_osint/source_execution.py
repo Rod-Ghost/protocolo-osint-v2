@@ -126,7 +126,7 @@ def execute_sources(value: str, source_ids: list[str], *,
             "query_url": url, "source_url": "",
             "observed_at": None, "verification_status": "unverified",
         }
-        if not url:
+        if target_kind not in s.kinds or not url:
             base["status"] = "incompatible"
             base["notice"] = "Fonte incompatível com o critério escolhido; não consultada."
         else:

@@ -64,6 +64,7 @@ def _valid_username(value: str) -> bool:
 def _valid_full_name(value: str) -> bool:
     """Only ordinary human-readable names. No GitHub search operators."""
     return (3 <= len(value) <= 80 and 2 <= len(value.split()) <= 7 and
+            not any(word.upper() in {"AND", "OR", "NOT"} for word in value.split()) and
             all(c.isalpha() or c in " -'." for c in value) and
             all(any(ch.isalpha() for ch in part) for part in value.split()))
 

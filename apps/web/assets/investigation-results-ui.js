@@ -59,7 +59,15 @@
       ['domain','email','ip','url'].includes(type)?type:'auto';
     return {value,kind,type,query,providers,notice,engineKind};
   }
-  const sig=()=>JSON.stringify([formTarget(),selectedKind()]);
+  const selectedSourceIds=()=>[...d.querySelectorAll('#cb-source-list input[type=checkbox]:checked')]
+    .map(n=>n.value);
+  const chosenFilters=()=>({
+    exact:!!q('#cb-exact')?.checked,
+    site:q('#cb-site')?.value.trim()||'',
+    filetype:q('#cb-file')?.value||'',
+    exclude:q('#cb-exclude')?.value.trim()||''
+  });
+  const sig=()=>JSON.stringify([formTarget(),selectedKind(),selectedSourceIds(),chosenFilters()]);
   function invalidate(){
     if(!run&&!engineJobs.length)return;
     if(sig()===signature)return;
@@ -75,9 +83,13 @@
   function render(){
     if(!run){actions.hidden=true;summary.hidden=true;return}
     const stats=model.summary(run);
-    summary.hidden=false;summary.textContent=stats.with_records+' fonte(s) com registros · '+
-      stats.no_records+' sem registros retornados · '+stats.failed+' falha(s) · '+
-      stats.pending+' pendente(s) · '+stats.returned+' registro(s) retornado(s)';
+    const manual=run.sources.filter(x=>x.status==='not_queried').length;
+    const incompatible=run.sources.filter(x=>x.status==='incompatible').length;
+    const selected=run.sources.filter(x=>!x.job_id).length;
+    summary.hidden=false;summary.textContent=stats.checked+' de '+selected+' fonte(s) selecionada(s) consultadas · '+
+      stats.with_records+' com registros · '+stats.no_records+' sem retorno · '+
+      stats.failed+' falha(s) · '+manual+' manuais · '+incompatible+
+      ' incompatíveis · '+stats.returned+' registro(s) retornado(s)';
     actions.hidden=run.sources.length===0;
     refreshButton.hidden=!engineJobs.some(j=>j.pending);
     saveButton.disabled=!unlocked()||!run.sources.length||!!lastSavedId;
@@ -87,7 +99,9 @@
     list.replaceChildren();
     const labels={observed:'Registros retornados',completed:'Saída retornada',
       no_result:'Nenhum registro retornado',failed:'Falha na consulta',
-      pending:'Pendente',unavailable:'Não disponível'};
+      pending:'Pendente',unavailable:'Não disponível',
+      not_queried:'Não consultada · link manual',
+      incompatible:'Incompatível · não consultada'};
     for(const source of run.sources){
       const card=el('article','ir-source ir-'+source.status);
       const head=el('div','ir-source-head'),h=el('strong','',source.label);
@@ -98,6 +112,13 @@
         'Quantidade não confirmada';
       card.append(el('small','ir-count',countText));
       if(source.notice)card.append(el('p','ir-source-note',source.notice));
+      if(source.query_url){
+        const prepared=model.safeLink(source.query_url);
+        if(prepared){
+          const link=el('a','ir-source-link','Abrir consulta manual preparada');
+          link.href=prepared;link.target='_blank';link.rel='noopener noreferrer';card.append(link);
+        }
+      }
       if(source.source_url){
         const link=el('a','ir-source-link','Abrir fonte original');
         link.href=source.source_url;link.target='_blank';link.rel='noopener noreferrer';card.append(link);
@@ -109,10 +130,19 @@
         details.append(sum);
         for(const record of source.items){
           const row=el('div','ir-record');
-          const text=typeof record==='string'?record:JSON.stringify(record);
-          row.append(el('span','',text.slice(0,540)));
-          const match=text.match(/https:\/\/[^\s"<>\u0000-\u001f]{5,200}/);
-          const url=match?model.safeLink(match[0].replace(/[.,;)]$/,'')):'';
+          const text=typeof record==='string'?record:
+            (record.display_name||record.label||record.login||record.name||
+              record.data||record.id||JSON.stringify(record));
+          row.append(el('span','',String(text).slice(0,250)));
+          if(typeof record==='object'&&record!==null){
+            const detail=[record.description,record.type,
+              record.works_count!=null?record.works_count+' trabalhos':''].filter(Boolean).join(' · ');
+            if(detail)row.append(el('small','',detail.slice(0,280)));
+          }
+          const match=String(text).match(/https:\/\/[^\s"<>\u0000-\u001f]{5,200}/);
+          const url=model.safeLink((typeof record==='object'&&record?
+            (record.profile_url||record.entity_url||record.author_url||''):'')||
+            (match?match[0].replace(/[.,;)]$/,''):''));
           if(url){const link=el('a','','Abrir referência');link.href=url;
             link.target='_blank';link.rel='noopener noreferrer';row.append(link)}
           details.append(row);
@@ -138,32 +168,39 @@
   }
   async function publicScan(){
     if(busy||engineBusy)return;
-    const cfg=config();
+    const cfg=config(),ids=selectedSourceIds();
     if(cfg.value.length<2||cfg.value.length>240){
-      status.textContent='Informe um alvo entre 2 e 240 caracteres.';q('#cb-query')?.focus();return}
-    if(!cfg.providers.length){
-      status.textContent='Para esse critério não há provedor público automático homologado. '+
-        'Não será exibido zero fictício. Os motores autenticados podem ter capacidades adicionais.';
-      return;
+      status.textContent='Informe um alvo entre 2 e 240 caracteres.';q('#cb-query')?.focus();return;
     }
-    if(!root.confirm('Consultar '+cfg.providers.map(p=>p[1]).join(' e ')+
-      ' para '+cfg.query+'? O alvo será enviado aos provedores públicos.'))return;
-    busy=true;runButton.disabled=true;startRun(cfg);
-    status.textContent='Consultando '+cfg.providers.length+' provedor(es) real(is)… '+cfg.notice;
-    const seq=signature;
+    if(!ids.length){
+      status.textContent='Selecione ao menos uma fonte na etapa 2.';return;
+    }
+    if(!root.confirm('Consultar as fontes com API autorizada dentre as '+ids.length+
+      ' selecionadas para "'+cfg.value+'"? As demais serão marcadas como NÃO consultadas.'))return;
+    busy=true;runButton.disabled=true;
+    status.textContent='Preparando cobertura real: '+ids.length+
+      ' fonte(s) selecionada(s), consultando apenas as integrações homologadas…';
+    const seq=sig();
+    pollEpoch++;
     try{
-      await Promise.all(cfg.providers.map(async ([id,label])=>{
-        let entry;
-        try{
-          const response=await request('/api/v1/lookup',{data:{value:cfg.query,provider:id}},16000);
-          entry=model.normalizeLookup(id,response,cfg.query);
-        }catch(error){entry=model.failure(id,label,error)}
-        if(signature!==seq||sig()!==seq)return;
-        run.sources.push(entry);render();
-      }));
-      if(signature===seq&&sig()===seq)
-        status.textContent='Consulta encerrada. Veja os registros por provedor. '+
-          'Falhas não contam como ausência de resultados; baixe o PDF ou salve no cofre.';
+      const response=await request('/api/v1/investigations/execute',{
+        data:{value:cfg.value,kind:cfg.kind,source_ids:ids,filters:chosenFilters()}
+      },24000);
+      if(seq!==sig())throw Error('O critério mudou durante a consulta. Refaça para evitar mistura de resultados.');
+      if(response.format!=='protocolo-osint/investigation-run-v2'||
+         !Array.isArray(response.sources)||response.sources.length!==ids.length||
+         response.sources.some((s,i)=>s?.id!==ids[i]))
+        throw Error('Contrato de fontes executadas inconsistente: nenhum resultado será atribuído ao alvo.');
+      signature=seq;
+      run=response;run.format='protocolo-osint/investigation-run-v2';
+      engineJobs=[];lastSavedId='';render();
+      const stats=model.summary(run);
+      status.textContent='Cobertura concluída: '+stats.checked+
+        ' fonte(s) consultadas de '+ids.length+' selecionadas. '+
+        'Fontes sem conector permanecem links manuais e NÃO contam como resultados. '+
+        'Filtragens avançadas se aplicam apenas aos links preparados.';
+    }catch(error){
+      status.textContent='Não foi possível concluir o processamento: '+error.message;
     }finally{busy=false;runButton.disabled=false}
   }
   async function checkJobs(once=false){
@@ -263,8 +300,9 @@
     catch(error){status.textContent='Falha ao gerar PDF: '+error.message}
   });
   saveButton.addEventListener('click',saveRun);
-  for(const name of ['#cb-query','#cb-kind'])
+  for(const name of ['#cb-query','#cb-kind','#cb-site','#cb-file','#cb-exclude','#cb-exact'])
     q(name)?.addEventListener('input',invalidate);
+  d.querySelector('#cb-source-list')?.addEventListener('change',invalidate);
   root.addEventListener('protocolo:vault-change',render);
   root.ProtocoloInvestigationUI=Object.freeze({
     view:()=>({run:run?JSON.parse(JSON.stringify(run)):null,

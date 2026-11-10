@@ -394,8 +394,63 @@ async function runLiveLookup(event){
   }catch(err){$('#live-status').textContent='INDISPONÍVEL';out.innerHTML=`<div class="placeholder">${esc(err.message)}<p>O provedor pode estar temporariamente indisponível.</p></div>`;toast(err.message,true)}
   finally{btn.disabled=false;}
 }
+function setupQuickInvestigation(){
+  // One-input entry point; source opening and engine runs remain user-controlled.
+  const form=$('#global-search-form'),input=$('#global-query');
+  if(!form||!input||form.querySelector('#quick-kind'))return;
+  const kind=document.createElement('select');
+  kind.id='quick-kind';kind.setAttribute('aria-label','Critério da investigação');
+  for(const [value,label] of [
+    ['auto','Detectar tipo'],['domain','Domínio'],['username_candidate','Usuário'],
+    ['email','E-mail'],['ip','IP'],['free_text','Texto livre']
+  ]){const opt=document.createElement('option');opt.value=value;opt.textContent=label;kind.append(opt)}
+  const quick=document.createElement('button');
+  quick.id='quick-investigate';quick.type='button';
+  quick.textContent='Investigar';
+  quick.title='Abrir investigação guiada, sem executar consultas externas automaticamente';
+  const legacy=form.querySelector('button[type="submit"]');
+  if(legacy){legacy.classList.add('quick-legacy');legacy.setAttribute('title','Explorar o catálogo original de fontes')}
+  form.insertBefore(kind,legacy||null);
+  form.insertBefore(quick,legacy||null);
+  quick.addEventListener('click',()=>{
+    const query=input.value.trim();
+    if(query.length<2||query.length>240){toast('Informe um alvo de 2 a 240 caracteres.',true);input.focus();return}
+    go('sources');
+    document.dispatchEvent(new CustomEvent('protocolo:prepare-investigation',{
+      detail:{query,kind:kind.value}
+    }));
+    toast('Alvo enviado ao planejamento guiado. Escolha fontes e prepare as consultas.');
+  });
+
+  // Creating a case already performs an authenticated AES-GCM write.
+  const panel=$('#panel-cases'),layout=panel?.querySelector('.case-layout');
+  if(!panel||!layout)return;
+  const notice=document.createElement('div');
+  notice.id='case-saved-notice';notice.className='case-saved-notice';notice.hidden=true;
+  const text=document.createElement('span');
+  text.id='case-saved-description';
+  const action=document.createElement('button');
+  action.type='button';action.id='case-start-investigation';
+  action.className='button primary-button';action.textContent='Investigar neste caso';
+  notice.append(text,action);layout.before(notice);
+  action.addEventListener('click',()=>{
+    if(!vaultReady()){notice.hidden=true;toast('Desbloqueie o cofre para continuar.',true);return}
+    go('sources');
+    $('#cb-query')?.focus();
+    toast('Caso vinculado. Escolha um alvo e prepare as consultas; depois salve o plano.');
+  });
+  window.addEventListener('protocolo:vault-change',()=>{
+    if(!vaultReady())notice.hidden=true;
+  });
+  document.addEventListener('protocolo:case-created',event=>{
+    if(!vaultReady())return;
+    text.textContent='Caso criado e salvo no cofre criptografado. Você pode investigar agora ou adicionar registros abaixo.';
+    notice.hidden=false;
+  });
+}
 function bind(){
   icons();
+  setupQuickInvestigation();
   if(staticPreview || hostedPreview){
     const banner=document.createElement('div');
     banner.className='static-preview-banner';
@@ -430,7 +485,7 @@ function bind(){
   $('#source-search-form').addEventListener('submit',event=>{event.preventDefault();search($('#source-query').value)});
   $('#new-case-toggle').addEventListener('click',()=>{$('#case-form').hidden=false;$('#case-title').focus()});
   $('#cancel-case').addEventListener('click',()=>{$('#case-form').hidden=true});
-  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();toast((hostedPreview||staticPreview)?'Caso criado no cofre criptografado deste navegador.':'Caso criado no banco local.')}catch(e){toast(e.message,true)}});
+  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();if(hostedPreview||staticPreview)document.dispatchEvent(new CustomEvent('protocolo:case-created',{detail:{caseId:result.id}}));toast((hostedPreview||staticPreview)?'Caso criado no cofre criptografado deste navegador.':'Caso criado no banco local.')}catch(e){toast(e.message,true)}});
   $('#image-input').addEventListener('change',event=>setImage(event.target.files[0]));
   const drop=$('#image-dropzone');drop.addEventListener('dragover',event=>{event.preventDefault();drop.classList.add('dragging')});drop.addEventListener('dragleave',()=>drop.classList.remove('dragging'));drop.addEventListener('drop',event=>{event.preventDefault();drop.classList.remove('dragging');setImage(event.dataTransfer.files[0])});
   $('#analyze-image-button').addEventListener('click',analyzeImage);

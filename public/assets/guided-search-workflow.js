@@ -152,9 +152,25 @@
   saveBar.append(save);
   const reviewLinks=node('button','wf-inline-link','Revisar links preparados');
   reviewLinks.type='button';reviewLinks.id='wf-review-links';
+  const enginesLink=node('button','button ghost-button','Consultar motores autorizados');
+  enginesLink.id='wf-open-engines';enginesLink.type='button';
+  enginesLink.title='Abrir o console de motores, sem iniciar execução';
+  enginesLink.addEventListener('click',()=>{
+    const target=query.value.trim();
+    const nav=document.querySelector('#primary-nav [data-view="engines"]');
+    const field=document.querySelector('#engine-query');
+    if(!target||!nav||!field){
+      message.textContent='Console indisponível. Revise os motores no menu principal.';
+      return;
+    }
+    nav.click();field.value=target;field.dispatchEvent(new Event('input',{bubbles:true}));
+    field.focus();
+    // The operator must choose a compatible engine and explicitly authorize
+    // any real execution. A prepared link is never presented as a finding.
+  });
   stage[3].append(node('p','wf-stage-tip',
     'Salvamento opcional no cofre criptografado. Se quiser apenas abrir links, você pode concluir sem escolher um caso.'),
-    caseSettings,saveBar,reviewLinks);
+    caseSettings,saveBar,reviewLinks,enginesLink);
   actions.remove();
 
   const footer=node('div','wf-navigation');

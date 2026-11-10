@@ -1,0 +1,56 @@
+/* V2.8: compact, progressive UX — no removal of legacy controls. */
+#global-search-form{max-width:790px;gap:7px}
+#quick-kind{flex:0 0 132px;max-width:132px;min-width:0;border:0;border-left:1px solid #b5cccc;
+  background:transparent;color:#284650;padding:8px 5px 8px 10px;font-size:12px;outline-offset:2px}
+#global-search-form #quick-investigate{background:#e84b66;color:#fff;min-height:43px;padding:0 15px}
+#global-search-form #quick-investigate:hover{background:#cc3653}
+#global-search-form .quick-legacy{background:#d8e8e9;color:#294653;padding:0 11px}
+#global-search-form .quick-legacy:hover{background:#bfd9dc}
+#global-search-form :is(input,select,button):focus-visible{outline:2px solid #ba2447;outline-offset:2px}
+.app-shell .hero-card{min-height:310px;padding:21px 24px}
+.app-shell .hero-main{margin-top:22px}
+.app-shell .hero-main p{margin-bottom:17px}
+.app-shell .hero-decor{opacity:.24}
+.app-shell .right-rail{min-height:310px;padding:18px 17px}
+.app-shell .rail-title{font-size:17px;margin:9px 0 13px}
+.app-shell .rail-metric{min-height:54px;padding:6px 9px}
+.app-shell .rail-metric-icon{height:30px;width:30px}
+.app-shell .rail-metric b{font-size:16px}
+.app-shell .rail-bottom{padding-top:8px}
+.app-shell .content-heading{margin-top:24px}
+.app-shell .feature-grid{grid-template-columns:repeat(auto-fit,minmax(166px,1fr));gap:10px}
+.app-shell .feature-card{min-height:145px;padding:14px}
+.app-shell .feature-icon{height:33px;width:33px;margin-bottom:9px}
+.app-shell .feature-tag{right:13px;top:19px}
+.app-shell .feature-foot{padding-top:9px}
+.app-shell .page-heading{margin-bottom:16px}
+.app-shell .page-heading h1{margin:5px 0}
+.case-builder.wf-enabled{gap:12px;padding:16px}
+.wf-enabled .wf-stage{gap:12px;padding:16px}
+.wf-enabled .cb-source-list{max-height:290px;overflow-y:auto;overscroll-behavior:contain}
+.wf-enabled .wf-stage-head{padding-bottom:9px}
+.wf-enabled .wf-stage-tip{padding:8px 11px}
+.case-saved-notice{display:flex;align-items:center;justify-content:space-between;gap:15px;
+  border:1px solid #386c62;background:rgba(47,131,108,.14);border-radius:10px;
+  padding:12px 14px;margin:0 0 16px;font-size:12px;line-height:1.55;color:#d0f4e8}
+.case-saved-notice[hidden]{display:none}
+.case-saved-notice .button{flex-shrink:0}
+.light .case-saved-notice{background:#e4f4ed;color:#21483b;border-color:#abd8c3}
+@media(max-width:1100px){
+  #global-search-form{flex-wrap:wrap;padding:10px}
+  #global-search-form input{flex-basis:100%;min-height:34px}
+  #quick-kind{flex:1;max-width:none}
+}
+@media(max-width:620px){
+  .app-shell .hero-card{min-height:0;padding:18px 14px}
+  .app-shell .hero-main{margin-top:15px}
+  .app-shell .hero-main h1{font-size:29px}
+  .app-shell .right-rail{min-height:0}
+  #global-search-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px}
+  #global-search-form>svg{display:none}
+  #global-search-form input{grid-column:1/-1;width:100%;min-height:33px;font-size:13px}
+  #global-search-form #quick-kind{grid-column:1/-1;width:100%;max-width:none;border-left:0;border-top:1px solid #b5cccc;font-size:12px}
+  #global-search-form button{min-width:0;min-height:42px;justify-content:center;padding:0 7px;font-size:11px}
+  .case-saved-notice{flex-direction:column;align-items:stretch}
+  .case-saved-notice button{width:100%}
+}

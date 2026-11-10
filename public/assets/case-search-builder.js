@@ -38,6 +38,7 @@
       'Outras fontes recebem o termo original.</p>'+
       '<div class="cb-source-head"><strong>Fontes do catálogo</strong>'+
         '<label>Categoria <select id="cb-category"><option value="">Todas</option></select></label>'+
+        '<button id="cb-compatible" type="button" class="button ghost-button">Todas compatíveis</button>'+
         '<button id="cb-select" type="button" class="button ghost-button">Selecionar visíveis</button>'+
         '<button id="cb-clear" type="button" class="button ghost-button">Limpar</button></div>'+
       '<div id="cb-source-list" class="cb-source-list" role="group" aria-label="Selecionar fontes"></div>'+
@@ -111,7 +112,7 @@
   }
   async function loadCases(){
     const select=$('#cb-case',block);
-    const current=select.value||state.caseId;
+    const current=state.caseId||select.value;
     select.replaceChildren();
     const first=create('option','','Somente preparar links');first.value='';select.append(first);
     if(!canSave()){
@@ -120,8 +121,14 @@
     }
     const data=await vault().listCases();
     for(const c of data){const option=create('option','',c.title);option.value=c.id;select.append(option)}
-    if(data.some(x=>x.id===current))select.value=current;
+    const desired=data.some(x=>x.id===current)?current:
+      (data.length===1?data[0].id:'');
+    if(desired)select.value=desired;
     state.caseId=select.value;
+    // Explicitly show the next required action; never silently save a plan.
+    $('#cb-save',block).disabled=!state.planned||!canSave()||!state.caseId;
+    if(data.length && !state.caseId)
+      message.textContent='Selecione o caso que receberá o plano de investigação.';
     return data;
   }
   function renderResults(data){
@@ -152,6 +159,7 @@
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(String(data.detail||'Não foi possível construir a pesquisa.'));
       state.planned={payload,data};state.editing=null;
+      if(canSave())await loadCases();
       $('#cb-save',block).disabled=!canSave()||!$('#cb-case',block).value;
       renderResults(data);
       message.textContent='Plano pronto: '+data.total+' links. Abra fontes individualmente e registre suas descobertas.';
@@ -250,6 +258,16 @@
     }
   }
   $('#cb-category',block).addEventListener('change',showSources);
+  $('#cb-compatible',block).addEventListener('click',()=>{
+    const kind=$('#cb-kind',block).value;
+    const compatible=new Set(state.sources.filter(src=>kind==='auto'||
+      (Array.isArray(src.kinds)&&src.kinds.includes(kind))).slice(0,60).map(src=>src.id));
+    const boxes=[...list.querySelectorAll('input[type=checkbox]')];
+    for(const cb of boxes)cb.checked=compatible.has(cb.value);
+    // Trigger the existing stale-plan guard and selection counter.
+    boxes[0]?.dispatchEvent(new Event('change',{bubbles:true}));
+    message.textContent=compatible.size+' fontes compatíveis selecionadas. Nenhuma foi consultada.';
+  });
   $('#cb-select',block).addEventListener('click',()=>{
     for(const cb of list.querySelectorAll('label:not([hidden]) input'))cb.checked=true;
   });
@@ -303,4 +321,26 @@
   });
   // Existing app vault may be unlocked after initial paint.
   $('#cb-case',block).addEventListener('focus',()=>loadCases().catch(e=>message.textContent=e.message));
+  window.addEventListener('protocolo:vault-change',()=>{
+    if(!canSave()){state.caseId='';state.planned=null;$('#cb-save',block).disabled=true;}
+    loadCases().catch(e=>{message.textContent=e.message});
+  });
+  document.addEventListener('protocolo:case-created',event=>{
+    const id=event.detail?.caseId;
+    if(typeof id!=='string'||!id)return;
+    state.caseId=id;
+    loadCases().catch(e=>{message.textContent=e.message});
+  });
+  document.addEventListener('protocolo:prepare-investigation',async event=>{
+    const raw=event.detail;
+    if(!raw||typeof raw.query!=='string'||raw.query.trim().length<2)return;
+    await sourcesReady;
+    $('#cb-query',block).value=raw.query.trim().slice(0,240);
+    const allowed=['auto','domain','username_candidate','email','ip','url','free_text'];
+    $('#cb-kind',block).value=allowed.includes(raw.kind)?raw.kind:'auto';
+    $('#cb-query',block).dispatchEvent(new Event('input',{bubbles:true}));
+    $('#cb-kind',block).dispatchEvent(new Event('change',{bubbles:true}));
+    if(canSave())await loadCases();
+    block.scrollIntoView({block:'start',behavior:'smooth'});
+  });
 })();

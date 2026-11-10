@@ -240,11 +240,29 @@ function engineEvidenceDetails(e){
     '<small>Selecionado manualmente; conteúdo e identidade não verificados independentemente.</small>'+
     '</details>';
 }
+function captureEvidenceDetails(e){
+  const p=e?.capture;
+  if(!p||p.format!=='protocolo-osint/capture-v1')return '';
+  const origin=p.method==='cors-https'?'Obtida via HTTPS/CORS no navegador':
+    'Arquivo fornecido manualmente pelo investigador';
+  return '<details class="capture-evidence-provenance">'+
+    '<summary>Bytes preservados · SHA-256 verificável</summary>'+
+    '<small><strong>Arquivo:</strong> '+esc(p.filename)+'</small>'+
+    '<small><strong>Formato:</strong> '+esc(p.mime_type)+
+    ' · '+esc(p.byte_count)+' bytes</small>'+
+    '<small><strong>SHA-256 dos bytes:</strong> '+esc(p.sha256_bytes)+'</small>'+
+    '<small><strong>Método:</strong> '+esc(origin)+'</small>'+
+    '<small><strong>Data do dispositivo:</strong> '+esc(p.acquired_at_device||'não registrada')+'</small>'+
+    '<small><strong>Origem:</strong> '+esc(p.source_url||'não informada')+
+    (p.source_url_declared?' (declarada manualmente, não validada)':'')+'</small>'+
+    '<small>Integridade local verificável; autoria, fonte e timestamp não certificados.</small>'+
+    '</details>';
+}
 async function loadCase(id){
   try{
     const c=await api('/api/v1/cases/'+encodeURIComponent(id));state.activeCase=id;
     $$('.case-item').forEach(el=>el.classList.toggle('active',el.dataset.case===id));
-    $('#case-detail').innerHTML=`<div class="case-detail-top"><div><div class="eyebrow">INVESTIGAÇÃO ATIVA</div><h2>${esc(c.title)}</h2><p>${esc(c.description||'Sem descrição cadastrada.')}</p></div><a class="button ghost-button" href="/api/v1/cases/${encodeURIComponent(c.id)}/export" download="case-${esc(c.id)}.json"><span data-icon="download"></span> Exportar</a></div><div class="case-detail-subheading"><h3>Registros e referências</h3><span class="subtext">${c.evidence.length} registros</span></div><div>${c.evidence.length?c.evidence.map(e=>`<div class="evidence-item"><span data-icon="file-text"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.kind==='note'?'Nota local':'Referência externa')} · ${new Date(e.created_at).toLocaleString('pt-BR')}</small>${e.url?`<small><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir fonte original ↗</a></small>`:''}${e.note?`<small>${esc(e.note).slice(0,300)}</small>`:''}${engineEvidenceDetails(e)}</div></div>`).join(''):'<div class="subtext">Ainda não há registros. Adicione referências documentadas abaixo.</div>'}</div><form id="evidence-form" class="evidence-form"><div class="eyebrow">ADICIONAR REGISTRO</div><input id="evidence-title" placeholder="Título ou descrição do achado" maxlength="180" minlength="2" required/><input id="evidence-url" type="url" placeholder="URL HTTPS da fonte (opcional)" maxlength="2000"/><textarea id="evidence-note" rows="2" maxlength="5000" placeholder="Observações, contexto e limites"></textarea><button class="button primary-button" type="submit"><span data-icon="plus"></span> Adicionar registro</button><small class="subtext">O hash protege os metadados do registro, não captura a página externa.</small></form>`;
+    $('#case-detail').innerHTML=`<div class="case-detail-top"><div><div class="eyebrow">INVESTIGAÇÃO ATIVA</div><h2>${esc(c.title)}</h2><p>${esc(c.description||'Sem descrição cadastrada.')}</p></div><a class="button ghost-button" href="/api/v1/cases/${encodeURIComponent(c.id)}/export" download="case-${esc(c.id)}.json"><span data-icon="download"></span> Exportar</a></div><div class="case-detail-subheading"><h3>Registros e referências</h3><span class="subtext">${c.evidence.length} registros</span></div><div>${c.evidence.length?c.evidence.map(e=>`<div class="evidence-item"><span data-icon="file-text"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.kind==='note'?'Nota local':'Referência externa')} · ${new Date(e.created_at).toLocaleString('pt-BR')}</small>${e.url?`<small><a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">Abrir fonte original ↗</a></small>`:''}${e.note?`<small>${esc(e.note).slice(0,300)}</small>`:''}${engineEvidenceDetails(e)}${captureEvidenceDetails(e)}</div></div>`).join(''):'<div class="subtext">Ainda não há registros. Adicione referências documentadas abaixo.</div>'}</div><form id="evidence-form" class="evidence-form"><div class="eyebrow">ADICIONAR REGISTRO</div><input id="evidence-title" placeholder="Título ou descrição do achado" maxlength="180" minlength="2" required/><input id="evidence-url" type="url" placeholder="URL HTTPS da fonte (opcional)" maxlength="2000"/><textarea id="evidence-note" rows="2" maxlength="5000" placeholder="Observações, contexto e limites"></textarea><button class="button primary-button" type="submit"><span data-icon="plus"></span> Adicionar registro</button><small class="subtext">O hash protege os metadados do registro, não captura a página externa.</small></form>`;
     icons($('#case-detail'));
     // Case metadata already reside in the browser vault (hosted) or local API.
     // Generate Markdown on the client without uploading decrypted case content.
@@ -331,9 +349,17 @@ async function analyzeImage(){
     toast('Análise concluída sem envio a serviços externos.');await loadSummary();
   }catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.innerHTML='Analisar imagem <span data-icon="arrow-right"></span>';icons(btn)}
 }
-async function drawGraph(){const id=$('#graph-case').value;if(!id){$('#graph-canvas').innerHTML='<div class="empty-state"><span data-icon="network"></span><h3>Um mapa para cada investigação.</h3><p>Selecione um caso para visualizar vínculos documentados.</p></div>';icons($('#graph-canvas'));return}
+async function drawGraph(){
+  if((hostedPreview||staticPreview)&&!vaultReady()){
+    $('#graph-canvas').replaceChildren();return;
+  }
+  const id=$('#graph-case').value;if(!id){$('#graph-canvas').innerHTML='<div class="empty-state"><span data-icon="network"></span><h3>Um mapa para cada investigação.</h3><p>Selecione um caso para visualizar vínculos documentados.</p></div>';icons($('#graph-canvas'));return}
  try{
- const data=await api(`/api/v1/cases/${encodeURIComponent(id)}/graph`);const nodes=data.nodes.slice(0,31);const center={x:420,y:220};const rest=nodes.slice(1);const positions=new Map([[nodes[0].id,center]]);
+ const data=await api(`/api/v1/cases/${encodeURIComponent(id)}/graph`);if(((hostedPreview||staticPreview)&&!vaultReady())||$('#graph-case').value!==id){
+    // In-flight graph loading must never recreate decrypted SVG after lock.
+    $('#graph-canvas').replaceChildren();return;
+  }
+  const nodes=data.nodes.slice(0,31);const center={x:420,y:220};const rest=nodes.slice(1);const positions=new Map([[nodes[0].id,center]]);
  rest.forEach((n,i)=>{const a=(i/rest.length)*Math.PI*2-Math.PI/2;const radius=rest.length>10?175:148;positions.set(n.id,{x:center.x+Math.cos(a)*radius,y:center.y+Math.sin(a)*radius})});
  const lines=rest.map(n=>{const p=positions.get(n.id);return `<line x1="${center.x}" y1="${center.y}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"/>`}).join('');
  const dots=nodes.map((n,i)=>{const p=positions.get(n.id);const radius=i===0?25:13;const label=esc(n.label.length>27?n.label.slice(0,25)+'…':n.label);return `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${radius}" fill="${i===0?'#56e2c8':'#9da2f4'}"/><text x="${p.x.toFixed(1)}" y="${(p.y+radius+18).toFixed(1)}" text-anchor="middle">${label}</text></g>`}).join('');
@@ -394,7 +420,7 @@ function bind(){
   if(staticPreview||hostedPreview){
     vaultPanel();
     $('#vault-form').addEventListener('submit',onVaultSubmit);
-    $('#vault-lock').addEventListener('click',()=>{browserVault.lock();state.activeCase=null;vaultPanel();refreshCases();refreshCaseSelects();loadSummary();toast('Cofre bloqueado.');});
+    $('#vault-lock').addEventListener('click',()=>{browserVault.lock();state.activeCase=null;$('#graph-canvas').replaceChildren();vaultPanel();refreshCases();refreshCaseSelects();loadSummary();toast('Cofre bloqueado.');});
     $('#vault-backup').addEventListener('click',async()=>{try{downloadLocalJSON('protocolo-osint-backup.json',await browserVault.exportAll());toast('Backup JSON em texto claro exportado. Guarde em local seguro.')}catch(err){toast(err.message,true)}});
   }else{$('#vault-gate').hidden=true;}
   $('#live-provider').addEventListener('change',liveProviderHint);
@@ -404,7 +430,7 @@ function bind(){
   $('#source-search-form').addEventListener('submit',event=>{event.preventDefault();search($('#source-query').value)});
   $('#new-case-toggle').addEventListener('click',()=>{$('#case-form').hidden=false;$('#case-title').focus()});
   $('#cancel-case').addEventListener('click',()=>{$('#case-form').hidden=true});
-  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();toast('Caso criado no banco local.')}catch(e){toast(e.message,true)}});
+  $('#case-form').addEventListener('submit',async event=>{event.preventDefault();try{const result=await post('/api/v1/cases',{title:$('#case-title').value,description:$('#case-description').value});$('#case-form').reset();$('#case-form').hidden=true;state.activeCase=result.id;await refreshCases();toast((hostedPreview||staticPreview)?'Caso criado no cofre criptografado deste navegador.':'Caso criado no banco local.')}catch(e){toast(e.message,true)}});
   $('#image-input').addEventListener('change',event=>setImage(event.target.files[0]));
   const drop=$('#image-dropzone');drop.addEventListener('dragover',event=>{event.preventDefault();drop.classList.add('dragging')});drop.addEventListener('dragleave',()=>drop.classList.remove('dragging'));drop.addEventListener('drop',event=>{event.preventDefault();drop.classList.remove('dragging');setImage(event.dataTransfer.files[0])});
   $('#analyze-image-button').addEventListener('click',analyzeImage);

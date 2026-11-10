@@ -5,6 +5,23 @@ on:
       - '.github/workflows/browser-e2e.yml'
       - 'tests/browser-production-flow.cjs'
       - 'tests/browser-evidence-flow.cjs'
+      - 'tests/browser-capture-flow.cjs'
+      - 'tests/browser-mission-shell.cjs'
+      - 'tests/browser-guided-workflow.cjs'
+      - 'tests/browser-case-workspace.cjs'
+      - 'apps/web/assets/case-workspace.js'
+      - 'apps/web/assets/case-workspace.css'
+      - 'public/assets/case-workspace.js'
+      - 'public/assets/case-workspace.css'
+      - 'apps/web/assets/guided-search-workflow.js'
+      - 'apps/web/assets/guided-search-workflow.css'
+      - 'public/assets/guided-search-workflow.js'
+      - 'public/assets/guided-search-workflow.css'
+      - 'apps/web/index.html'
+      - 'apps/web/assets/mission-shell.js'
+      - 'apps/web/assets/mission-shell.css'
+      - 'public/assets/mission-shell.js'
+      - 'public/assets/mission-shell.css'
   workflow_dispatch:
 
 permissions:
@@ -29,6 +46,48 @@ jobs:
         run: node tests/browser-production-flow.cjs
       - name: Test mock OAuth and engine evidence in Chromium (offline)
         run: node tests/browser-evidence-flow.cjs
+      - name: Test file capture, SHA and encrypted vault in Chromium
+        run: node tests/browser-capture-flow.cjs
+      - name: Mission Control desktop and mobile navigation smoke
+        run: node tests/browser-mission-shell.cjs
+      - name: Guided search workflow with local cases and mock sources
+        run: node tests/browser-guided-workflow.cjs
+      - name: Case workspace encrypted vault and responsive tabs
+        run: node tests/browser-case-workspace.cjs
+      - name: Save case workspace review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: case-workspace-ux-review
+          path: |
+            test-artifacts/case-workspace-desktop.png
+            test-artifacts/case-workspace-mobile.png
+            test-artifacts/case-workspace-mobile-locked.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Save guided-flow screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guided-workflow-ux-review
+          path: |
+            test-artifacts/workflow-guided-target.png
+            test-artifacts/workflow-guided-sources.png
+            test-artifacts/workflow-guided-results.png
+            test-artifacts/workflow-guided-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Save design review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mission-shell-ux-review
+          path: |
+            test-artifacts/mission-shell-desktop.png
+            test-artifacts/mission-shell-collapsed.png
+            test-artifacts/mission-shell-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save error-only screenshot
         if: failure()
         uses: actions/upload-artifact@v4

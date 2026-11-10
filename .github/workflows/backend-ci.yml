@@ -59,6 +59,31 @@ jobs:
       - run: node --check apps/web/assets/engine-evidence-ui.js
       - run: node --check public/assets/engine-evidence-ui.js
       - run: node tests/test-engine-evidence.cjs
+      - run: node --check apps/web/assets/source-capture-core.js
+      - run: node --check public/assets/source-capture-core.js
+      - run: node --check apps/web/assets/case-capture-ui.js
+      - run: node --check public/assets/case-capture-ui.js
+      - run: node tests/test-source-capture.cjs
+      - run: node --check apps/web/assets/evidence-graph-model.js
+      - run: node --check public/assets/evidence-graph-model.js
+      - run: node --check apps/web/assets/evidence-graph-ui.js
+      - run: node --check public/assets/evidence-graph-ui.js
+      - run: node tests/test-evidence-graph.cjs
+      - run: node --check apps/web/assets/portable-backup-core.js
+      - run: node --check public/assets/portable-backup-core.js
+      - run: node --check apps/web/assets/portable-backup-ui.js
+      - run: node --check public/assets/portable-backup-ui.js
+      - run: node tests/test-portable-backup.cjs
+      - run: node --check apps/web/assets/mission-shell.js
+      - run: node --check public/assets/mission-shell.js
+      - run: node --check tests/browser-mission-shell.cjs
+      - run: node --check apps/web/assets/case-workspace.js
+      - run: node --check public/assets/case-workspace.js
+      - run: node --check tests/browser-case-workspace.cjs
+      - run: node --test tests/test-case-workspace.cjs
+      - run: node --check apps/web/assets/guided-search-workflow.js
+      - run: node --check public/assets/guided-search-workflow.js
+      - run: node --check tests/browser-guided-workflow.cjs
       - run: node --check apps/web/assets/ai-bridge.js
       - run: node --check public/assets/ai-bridge.js
       - run: node --check apps/web/assets/ai-workspace.js

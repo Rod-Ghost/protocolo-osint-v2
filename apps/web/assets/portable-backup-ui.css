@@ -1,0 +1,17 @@
+/* Portable encrypted backup v2.4, additive and compatible with existing themes. */
+.portable-backup{margin:18px 0 22px;padding:18px;border:1px solid rgba(151,173,200,.23);border-radius:13px;background:rgba(13,19,30,.68);display:flex;flex-direction:column;gap:11px}
+.portable-backup h2{font-size:1.22rem;margin:0}.portable-backup h3{font-size:.98rem;margin:0}
+.portable-backup>p{line-height:1.55;color:#c0cad9;font-size:.83rem;margin:0}
+.pb-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.pb-card{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:11px;border:1px solid rgba(160,181,207,.23);border-radius:10px;padding:15px;background:rgba(5,10,18,.28)}
+.pb-card label{display:flex;flex-direction:column;gap:7px;font-size:.78rem;font-weight:620;overflow-wrap:anywhere}
+.pb-card input{width:100%;min-width:0;padding:10px 11px;border:1px solid rgba(162,185,213,.33);border-radius:8px;background:#111723;color:inherit;font:inherit}
+.pb-card input[type=file]{font-size:.74rem;max-width:100%}
+.pb-card button:disabled{opacity:.55;cursor:not-allowed}
+.pb-hint,.pb-note,.pb-feedback,.pb-warning{font-size:.75rem!important;line-height:1.55;overflow-wrap:anywhere}
+.pb-hint{color:#afbdce;margin:0}
+.pb-note{padding:10px;border:1px dashed rgba(169,184,204,.3);border-radius:8px}
+.pb-note[hidden]{display:none!important}
+.pb-feedback{min-height:20px;color:#c3e3dc;font-weight:580}
+.pb-warning{border-top:1px solid rgba(169,184,204,.19);padding-top:10px;color:#ffcbab!important}
+@media(max-width:750px){.pb-columns{grid-template-columns:1fr}.portable-backup{padding:12px}.pb-card{padding:11px}}

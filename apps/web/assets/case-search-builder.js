@@ -162,6 +162,11 @@
     try{
       if(!canSave())throw Error('Desbloqueie o cofre para guardar este plano.');
       if(!state.planned)throw Error('Prepare as consultas primeiro.');
+      // Guard against stale previews if the operator changed the target,
+      // sources or filters after preparing links. This is checked again at
+      // save-time independently of the visual wizard's disabled button.
+      if(JSON.stringify(formPayload())!==JSON.stringify(state.planned.payload))
+        throw Error('O alvo, os filtros ou as fontes mudaram. Prepare as consultas novamente antes de salvar.');
       const id=$('#cb-case',block).value;
       if(!id)throw Error('Escolha um caso.');
       const p=state.planned.payload;

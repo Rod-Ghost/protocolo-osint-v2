@@ -1,0 +1,27 @@
+/* Privacy-preserving capture UI; additive to existing cases panel. */
+.case-capture{margin:20px 0;padding:19px;border:1px solid rgba(157,176,203,.23);border-radius:13px;background:rgba(12,17,26,.65);display:flex;flex-direction:column;gap:10px}
+.case-capture h2{font-size:1.27rem;margin:0}
+.case-capture h3{font-size:.98rem;margin:13px 0 0}
+.case-capture p{line-height:1.52;margin:0;color:#bbc7d7;font-size:.85rem}
+.case-capture form{display:flex;flex-direction:column;gap:12px}
+.cap-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.cap-grid label{min-width:0;display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:.8rem}
+.cap-grid label[hidden]{display:none!important}
+.cap-grid label.cap-note{grid-column:1/-1}
+.cap-grid input:not([type=checkbox]),.cap-grid select,.cap-grid textarea{width:100%;min-width:0;border:1px solid rgba(173,189,210,.32);border-radius:8px;background:#141a26;color:inherit;padding:10px 11px;font:inherit}
+.cap-grid input[type=file]{max-width:100%}
+.cap-grid input::placeholder,.cap-grid textarea::placeholder{color:#acb8c6}
+.cap-consent{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:#c4cfdd;line-height:1.48}
+.cap-consent input{appearance:auto!important;min-width:18px!important;width:18px!important;height:18px!important;margin:1px 0 0!important;flex:0 0 18px;accent-color:#ed607f}
+.cap-actions{display:flex;gap:9px;flex-wrap:wrap}
+.cap-message{min-height:20px;overflow-wrap:anywhere}
+.cap-item{margin-top:8px;padding:12px 13px;border:1px solid rgba(169,187,211,.2);border-radius:10px;background:rgba(9,13,21,.45);display:flex;flex-direction:column;gap:9px}
+.cap-item strong{overflow-wrap:anywhere;font-size:.9rem}
+.cap-summary{font-size:.76rem!important}
+.cap-hash{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;display:block;font-size:.73rem;overflow-wrap:anywhere;padding:8px;border:1px solid rgba(163,178,201,.16);border-radius:7px;background:rgba(0,0,0,.16)}
+.cap-link{color:#ffa9bc;font-size:.78rem;overflow-wrap:anywhere}
+.cap-disclaimer,.cap-empty{font-size:.75rem!important}
+.capture-evidence-provenance{margin-top:8px;padding:9px;border:1px solid rgba(165,184,213,.22);border-radius:8px}
+.capture-evidence-provenance summary{cursor:pointer;font-size:.77rem;color:#f6a6bb}
+.capture-evidence-provenance small{display:block;overflow-wrap:anywhere;line-height:1.6}
+@media(max-width:640px){.case-capture{padding:12px}.cap-grid{grid-template-columns:1fr}.cap-grid label.cap-note{grid-column:auto}.cap-actions .button{flex:1 1 130px}}

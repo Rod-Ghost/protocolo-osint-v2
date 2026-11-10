@@ -85,7 +85,7 @@ async function run(){
   assert.equal(await page.locator('#cb-save').isEnabled(),true,
    'Save button should enable after explicit case selection and plan creation');
   await page.locator('#cb-save').click();
-  await page.locator('#cb-state').getByText(/Plano salvo no cofre criptografado/).waitFor();
+  await page.locator('#cb-state').getByText(/Salvo e confirmado no cofre/).waitFor();
   const saved=await page.evaluate(async()=>await browserVault.getCase(
    (await browserVault.listCases())[0].id));
   assert.equal(saved.search_plans.length,1);

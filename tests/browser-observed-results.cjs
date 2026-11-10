@@ -183,7 +183,7 @@ async function main(){
   await page.locator('#cb-kind').selectOption('free_text');
   await page.locator('#wf-progress [data-wf-step="3"]').click();
   await page.locator('#ir-run').click();
-  await page.locator('#ir-list .ir-observed').waitFor();
+  await page.locator('#ir-list .ir-observed').first().waitFor();
   const names=await page.evaluate(()=>ProtocoloInvestigationUI.view());
   assert.equal(names.summary.returned,3);
   assert(names.run.sources.some(s=>s.id==='github-users'&&s.status==='observed'));

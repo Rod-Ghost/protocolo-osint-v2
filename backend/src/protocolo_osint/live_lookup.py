@@ -7,6 +7,7 @@ No lookup confirms that an online account belongs to a particular person.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -21,6 +22,8 @@ PROVIDERS = {
     "certificates": {"name": "Certificados TLS", "accepts": "domain", "upstream": "crt.sh"},
     "github": {"name": "Perfil público no GitHub", "accepts": "username_candidate", "upstream": "GitHub REST API"},
     "github_name": {"name": "Candidatos por nome no GitHub", "accepts": "free_text", "upstream": "GitHub Search Users API"},
+    "wikidata_entities": {"name": "Entidades candidatas Wikidata", "accepts": "free_text", "upstream": "Wikidata Action API"},
+    "openalex_authors": {"name": "Autores candidatos OpenAlex", "accepts": "free_text", "upstream": "OpenAlex Authors API"},
 }
 
 
@@ -30,7 +33,7 @@ class LookupError(ValueError):
 
 def _safe_get_json(client: httpx.Client, url: str, params: dict[str, str] | None = None) -> Any:
     # Fixed hosts only. Never follow redirects to user-controlled destinations.
-    allowed = {"cloudflare-dns.com", "crt.sh", "api.github.com"}
+    allowed = {"cloudflare-dns.com", "crt.sh", "api.github.com", "www.wikidata.org", "api.openalex.org"}
     parsed = httpx.URL(url)
     if parsed.scheme != "https" or parsed.host not in allowed:
         raise LookupError("Provedor de consulta não autorizado.")
@@ -84,7 +87,7 @@ def lookup(value: str, provider: str, *, client: httpx.Client | None = None) -> 
         value = value.lstrip("@")
         if not _valid_username(value):
             raise LookupError("Informe um username válido do GitHub (até 39 caracteres).")
-    if provider == "github_name":
+    if provider in {"github_name", "wikidata_entities", "openalex_authors"}:
         value = " ".join(value.split())
         if not _valid_full_name(value):
             raise LookupError("A pesquisa por nome exige 2 a 7 palavras comuns, sem operadores.")
@@ -130,6 +133,49 @@ def lookup(value: str, provider: str, *, client: httpx.Client | None = None) -> 
                 if len(results) >= 25:
                     break
             source_url = f"https://crt.sh/?q={quote(value, safe='')}"
+        elif provider == "wikidata_entities":
+            payload = _safe_get_json(
+                client, "https://www.wikidata.org/w/api.php",
+                params={"action": "wbsearchentities", "search": value, "language": "pt",
+                        "uselang": "pt", "type": "item", "limit": "10", "format": "json"},
+            )
+            if not isinstance(payload, dict) or not isinstance(payload.get("search"), list):
+                raise LookupError("Wikidata retornou resposta inesperada.")
+            results = []
+            for item in payload["search"][:10]:
+                if not isinstance(item, dict):
+                    continue
+                identifier = str(item.get("id", ""))
+                if not re.fullmatch(r"Q[1-9][0-9]{0,12}", identifier):
+                    continue
+                results.append({
+                    "id": identifier,
+                    "label": str(item.get("label", ""))[:150],
+                    "description": str(item.get("description", ""))[:220],
+                    "entity_url": f"https://www.wikidata.org/wiki/{identifier}",
+                })
+            source_url = "https://www.wikidata.org/w/index.php?search=" + quote(value, safe="")
+        elif provider == "openalex_authors":
+            payload = _safe_get_json(
+                client, "https://api.openalex.org/authors",
+                params={"search": value, "per_page": "10", "page": "1"},
+            )
+            if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+                raise LookupError("OpenAlex retornou resposta inesperada.")
+            results = []
+            for item in payload["results"][:10]:
+                if not isinstance(item, dict):
+                    continue
+                identifier = str(item.get("id", ""))
+                if not re.fullmatch(r"https://openalex\.org/A[1-9][0-9]{0,14}", identifier):
+                    continue
+                works = item.get("works_count")
+                results.append({
+                    "display_name": str(item.get("display_name", ""))[:180],
+                    "author_url": identifier,
+                    "works_count": works if isinstance(works, int) and 0 <= works <= 1000000 else None,
+                })
+            source_url = "https://openalex.org/authors?search=" + quote(value, safe="")
         elif provider == "github_name":
             expression = f'"{value}" in:name type:user'
             payload = _safe_get_json(

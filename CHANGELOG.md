@@ -1,5 +1,17 @@
 # Changelog
 
+
+## [UI V3.2] — 2026-11-10 (source execution audit)
+
+- Mapa de capacidades distingue catálogo de links de APIs realmente executáveis.
+- `POST /api/v1/investigations/execute` contabiliza cada fonte selecionada e retorna `observed`, `no_result`, `failed`, `not_queried` ou `incompatible`, com origem e contagem verificáveis por contrato.
+- Conectores limitados de candidatos Wikidata/OpenAlex acrescentados a GitHub, DNS e CT; nenhum resultado de pessoas é tratado como identidade verificada.
+- Um DNS público foi acrescentado ao catálogo sem remover os 48 destinos anteriores.
+- Relatórios PDF e cópias locais AES-GCM preservam resultados, links manuais não consultados e até 65 entradas por execução.
+- Corrigida a perda do campo de dados DNS e o excesso de JSON bruto no relatório.
+- Testes contratados sem tráfego externo; consulta real em produção e heartbeat dos motores permanecem pendências operacionais.
+
+
 ## [1.2.0] — 2026-11-08
 
 - Menu IA opcional: checklist metodológico offline como padrão, sem LLM, API ou cobrança.

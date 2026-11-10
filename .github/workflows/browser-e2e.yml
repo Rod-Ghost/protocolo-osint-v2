@@ -9,6 +9,13 @@ on:
       - 'tests/browser-mission-shell.cjs'
       - 'tests/browser-guided-workflow.cjs'
       - 'tests/browser-case-workspace.cjs'
+      - 'tests/browser-quick-investigation.cjs'
+      - 'apps/web/assets/compact-investigation.css'
+      - 'public/assets/compact-investigation.css'
+      - 'apps/web/assets/app.js'
+      - 'public/assets/app.js'
+      - 'apps/web/assets/case-search-builder.js'
+      - 'public/assets/case-search-builder.js'
       - 'apps/web/assets/case-workspace.js'
       - 'apps/web/assets/case-workspace.css'
       - 'public/assets/case-workspace.js'
@@ -54,6 +61,18 @@ jobs:
         run: node tests/browser-guided-workflow.cjs
       - name: Case workspace encrypted vault and responsive tabs
         run: node tests/browser-case-workspace.cjs
+      - name: Quick investigation and encrypted save regression
+        run: node tests/browser-quick-investigation.cjs
+      - name: Save quick investigation review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quick-investigation-v28-ux-review
+          path: |
+            test-artifacts/quick-investigation-desktop.png
+            test-artifacts/quick-investigation-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Save case workspace review screenshots
         if: always()
         uses: actions/upload-artifact@v4

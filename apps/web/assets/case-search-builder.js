@@ -66,6 +66,43 @@
   const layout=casesHost.querySelector('.case-layout');
   if(layout)layout.after(caseBlock);else casesHost.append(caseBlock);
   const library=$('#cb-library',caseBlock);
+  // Save-step controls live inside the existing wizard stage, not another screen.
+  const caseSettings=$('.cb-case-settings',block);
+  const newCaseRow=create('label','cb-new-case-row');
+  newCaseRow.id='cb-new-case-row';
+  newCaseRow.hidden=true;
+  newCaseRow.append(create('span','','Nome da nova investigação'));
+  const newCaseTitle=create('input');
+  newCaseTitle.id='cb-new-case-title';
+  newCaseTitle.type='text';newCaseTitle.maxLength=120;newCaseTitle.minLength=2;
+  newCaseTitle.placeholder='Ex.: Investigação de domínio example.org';
+  newCaseRow.append(newCaseTitle);
+  caseSettings.append(newCaseRow);
+  const vaultHelp=create('div','cb-vault-help');
+  vaultHelp.id='cb-vault-help';
+  vaultHelp.hidden=true;
+  const vaultHint=create('span','','Para salvar, abra o cofre criptografado neste mesmo navegador e domínio.');
+  const vaultOpen=create('button','button ghost-button','Abrir cofre');
+  vaultOpen.type='button';vaultOpen.id='cb-open-vault';
+  vaultOpen.addEventListener('click',()=>{
+    document.querySelector('#primary-nav [data-view="cases"]')?.click();
+    document.querySelector('#vault-pass')?.focus();
+  });
+  vaultHelp.append(vaultHint,vaultOpen);
+  caseSettings.append(vaultHelp);
+  let casesLoadSequence=0,saving=false;
+  function refreshSaveControls(){
+    const unlocked=canSave(),id=$('#cb-case',block).value;
+    const creating=id==='__new__';
+    const name=newCaseTitle.value.trim();
+    newCaseRow.hidden=!unlocked||!creating;
+    vaultHelp.hidden=unlocked;
+    const btn=$('#cb-save',block);
+    btn.textContent=creating?'Criar caso e salvar plano':'Salvar plano no caso';
+    btn.disabled=saving||!unlocked||!state.planned||!id||
+      (creating&&(name.length<2||name.length>120));
+  }
+  newCaseTitle.addEventListener('input',refreshSaveControls);
 
   function selected(){
     return [...list.querySelectorAll('input[type=checkbox]:checked')].map(n=>n.value);
@@ -111,24 +148,47 @@
     return {value,source_ids:sources,kind:$('#cb-kind',block).value,filters:getFilters()};
   }
   async function loadCases(){
+    const request=++casesLoadSequence;
     const select=$('#cb-case',block);
     const current=state.caseId||select.value;
+    let data=[];
+    try{
+      if(canSave())data=await vault().listCases();
+    }catch(error){
+      if(request===casesLoadSequence){
+        message.textContent='Não foi possível carregar os casos: '+error.message;
+        refreshSaveControls();
+      }
+      throw error;
+    }
+    if(request!==casesLoadSequence)return data;
     select.replaceChildren();
-    const first=create('option','','Somente preparar links');first.value='';select.append(first);
+    const first=create('option','',canSave()?'Somente preparar links':'Cofre bloqueado — abra para salvar');
+    first.value='';select.append(first);
     if(!canSave()){
-      message.textContent='Para salvar planos, desbloqueie o cofre em Meus casos.';
+      state.caseId='';
+      refreshSaveControls();
       return [];
     }
-    const data=await vault().listCases();
-    for(const c of data){const option=create('option','',c.title);option.value=c.id;select.append(option)}
+    for(const c of data){
+      const option=create('option','',c.title);option.value=c.id;select.append(option);
+    }
+    const createNew=create('option','','+ Criar novo caso e salvar plano');
+    createNew.value='__new__';select.append(createNew);
+    // Never pick an arbitrary destination when multiple cases exist.
     const desired=data.some(x=>x.id===current)?current:
-      (data.length===1?data[0].id:'');
-    if(desired)select.value=desired;
-    state.caseId=select.value;
-    // Explicitly show the next required action; never silently save a plan.
-    $('#cb-save',block).disabled=!state.planned||!canSave()||!state.caseId;
-    if(data.length && !state.caseId)
-      message.textContent='Selecione o caso que receberá o plano de investigação.';
+      current==='__new__'?'__new__':
+      data.length===1?data[0].id:
+      data.length===0?'__new__':'';
+    select.value=desired;state.caseId=desired;
+    if(desired==='__new__'&&!newCaseTitle.value.trim())
+      newCaseTitle.value=$('#cb-query',block).value.trim().slice(0,120);
+    refreshSaveControls();
+    if(!data.length){
+      message.textContent='Nenhum caso salvo neste cofre. Informe um nome e use “Criar caso e salvar plano”.';
+    }else if(!desired){
+      message.textContent='Escolha um caso existente ou “Criar novo caso e salvar plano”.';
+    }
     return data;
   }
   function renderResults(data){
@@ -159,35 +219,56 @@
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(String(data.detail||'Não foi possível construir a pesquisa.'));
       state.planned={payload,data};state.editing=null;
-      if(canSave())await loadCases();
-      $('#cb-save',block).disabled=!canSave()||!$('#cb-case',block).value;
+      await loadCases();
+      refreshSaveControls();
       renderResults(data);
       message.textContent='Plano pronto: '+data.total+' links. Abra fontes individualmente e registre suas descobertas.';
     }catch(error){message.textContent=error.message;state.planned=null;$('#cb-save',block).disabled=true}
     finally{submit.disabled=false}
   }
   async function savePlan(){
+    if(saving)return;
+    saving=true;refreshSaveControls();
+    let createdId='';
     try{
-      if(!canSave())throw Error('Desbloqueie o cofre para guardar este plano.');
-      if(!state.planned)throw Error('Prepare as consultas primeiro.');
-      // Guard against stale previews if the operator changed the target,
-      // sources or filters after preparing links. This is checked again at
-      // save-time independently of the visual wizard's disabled button.
+      if(!canSave())throw Error('O cofre está bloqueado. Use “Abrir cofre” nesta etapa.');
+      if(!state.planned)throw Error('Prepare as consultas antes de salvar.');
+      // Refuse stale targets, filters, and source selections.
       if(JSON.stringify(formPayload())!==JSON.stringify(state.planned.payload))
-        throw Error('O alvo, os filtros ou as fontes mudaram. Prepare as consultas novamente antes de salvar.');
-      const id=$('#cb-case',block).value;
-      if(!id)throw Error('Escolha um caso.');
+        throw Error('O alvo, os filtros ou as fontes mudaram. Prepare novamente antes de salvar.');
+      let id=$('#cb-case',block).value;
+      if(id==='__new__'){
+        const name=newCaseTitle.value.trim();
+        if(name.length<2||name.length>120)
+          throw Error('Informe um nome de 2 a 120 caracteres para a investigação.');
+        const record=await vault().createCase(name,'');
+        createdId=record.id;id=record.id;state.caseId=id;
+        await loadCases();
+        document.dispatchEvent(new CustomEvent('protocolo:case-created',{detail:{caseId:id}}));
+      }
+      if(!id)throw Error('Escolha um caso existente ou crie um nesta tela.');
+      // A case may have been deleted/changed between selection and save.
+      if(!createdId && !await vault().getCase(id))
+        throw Error('O caso não está mais disponível neste cofre. Atualize a lista.');
       const p=state.planned.payload;
+      const title=prompt('Título do plano de busca',p.value.slice(0,70))||p.value.slice(0,70);
       const item=await vault().saveSearchPlan(id,{
         id:state.editing?.caseId===id?state.editing?.planId:undefined,
-        title:prompt('Título do plano de busca',p.value.slice(0,70))||p.value.slice(0,70),
-        query:p.value,kind:p.kind,source_ids:p.source_ids,
+        title,query:p.value,kind:p.kind,source_ids:p.source_ids,
         filters:p.filters,interval_days:Number($('#cb-interval',block).value)
       });
       state.caseId=id;state.editing={caseId:id,planId:item.id};
-      message.textContent='Plano salvo no cofre criptografado, vinculado ao caso.';
+      await loadCases();
       await renderLibrary();
-    }catch(error){message.textContent=error.message}
+      message.textContent='Salvo e confirmado no cofre: '+(createdId?'caso criado e ':'')+
+        'plano vinculado ao caso. Disponível em Meus casos.';
+    }catch(error){
+      message.textContent=(createdId?
+        'O caso foi criado, mas o plano ainda não foi salvo: ':
+        'Não foi possível salvar: ')+error.message;
+    }finally{
+      saving=false;refreshSaveControls();
+    }
   }
   function dateLabel(iso){
     try{return new Date(iso).toLocaleDateString('pt-BR')}catch{return '?'}
@@ -277,8 +358,11 @@
   $('#cb-refresh-cases',block).addEventListener('click',()=>loadCases().then(renderLibrary).catch(e=>message.textContent=e.message));
   $('#cb-case',block).addEventListener('change',event=>{
     state.caseId=event.target.value;
-    $('#cb-save',block).disabled=!state.planned||!canSave()||!state.caseId;
-    renderLibrary();
+    if(state.caseId==='__new__'&&!newCaseTitle.value.trim())
+      newCaseTitle.value=$('#cb-query',block).value.trim().slice(0,120);
+    refreshSaveControls();
+    if(state.caseId&&state.caseId!=='__new__')
+      renderLibrary().catch(error=>{message.textContent=error.message});
   });
   form.addEventListener('submit',generate);
   $('#cb-save',block).addEventListener('click',savePlan);
@@ -321,8 +405,10 @@
   });
   // Existing app vault may be unlocked after initial paint.
   $('#cb-case',block).addEventListener('focus',()=>loadCases().catch(e=>message.textContent=e.message));
+  document.addEventListener('protocolo:save-step-open',()=>loadCases().catch(e=>message.textContent=e.message));
+  loadCases().catch(e=>{message.textContent=e.message});
   window.addEventListener('protocolo:vault-change',()=>{
-    if(!canSave()){state.caseId='';state.planned=null;$('#cb-save',block).disabled=true;}
+    if(!canSave()){state.caseId='';state.planned=null;}
     loadCases().catch(e=>{message.textContent=e.message});
   });
   document.addEventListener('protocolo:case-created',event=>{

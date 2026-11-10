@@ -142,6 +142,19 @@ async function main(){
   assert.equal(await page.locator('#wf-prepare-save').isVisible(),false);
   await page.locator('#wf-finish').click();
   await page.locator('#panel-cases:visible').waitFor();
+
+  // Normal "Continuar para o caso" must ALSO prepare links before showing
+  // final step: no separate hidden button or manual back navigation.
+  await page.locator('#primary-nav [data-view=sources]').click();
+  await page.locator('#wf-progress [data-wf-step="0"]').click();
+  await page.locator('#cb-query').fill('example.edu');
+  await page.locator('#wf-next').click();
+  await page.locator('#wf-next').click();
+  await page.locator('#wf-next').click();
+  await page.locator('.wf-stage[data-wf-stage="3"]:visible').waitFor();
+  assert.equal(await page.locator('#cb-save').isVisible(),true);
+  assert.equal(await page.locator('#cb-save').isEnabled(),true);
+  assert.match(await page.locator('#wf-draft-status').innerText(),/Links preparados/);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('PASS: no-case save, inline creation, 2 cases, vault lock, persisted plans, mobile');
  }finally{await context.close();await browser.close();server.close()}

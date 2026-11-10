@@ -74,6 +74,7 @@ jobs:
           path: |
             test-artifacts/save-plan-inline-desktop.png
             test-artifacts/save-plan-inline-mobile.png
+            test-artifacts/save-step4-unprepared-desktop.png
           if-no-files-found: ignore
           retention-days: 7
       - name: Save quick investigation review screenshots
